@@ -1,0 +1,34 @@
+node_modules/
+.npm-cache/
+
+# Runtime data (the office's real results live here – back it up, don't commit it)
+data/
+
+# Build output
+web/dist/
+dist/
+
+# Dev artefacts
+.screens/
+.DS_Store
+*.log
+
+# Throwaway data used by npm run verify
+.verify-data/
+
+# Environment files
+.env
+.env*.local
+
+# Binaries and APKs
+*.apk
+
+# Mobile native generated build directories
+mobile/ios/
+mobile/android/
+mobile/.expo/
+mobile/node_modules/
+mobile/dist/
+mobile/web-build/
+mobile/.kotlin/
+

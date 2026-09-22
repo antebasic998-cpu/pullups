@@ -1,0 +1,464 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ *
+ * Design tokens – flat, calm, low-chrome. Colour is used sparingly:
+ * text hierarchy carries the design, the lime accent marks actions and
+ * personal bests only.
+ * ------------------------------------------------------------------ */
+:root,
+[data-theme='dark'] {
+  --bg: #0a0b0d;
+  --surface: #101216;
+  --surface-2: #16181d;
+  --surface-3: #1d2027;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #e9ecef;
+  --muted: #8a919b;
+  --faint: #5c636e;
+  --accent: #c9f750;
+  --accent-ink: #0f1305;
+  --accent-soft: rgba(201, 247, 80, 0.1);
+  --accent-line: rgba(201, 247, 80, 0.35);
+  --gold: #e2c069;
+  --silver: #b6bdc7;
+  --bronze: #c79264;
+  --danger: #f0736a;
+  --danger-soft: rgba(240, 115, 106, 0.1);
+  --up: #6ee7a8;
+  --down: #f0908a;
+  --grid-line: rgba(255, 255, 255, 0.06);
+  --overlay: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] {
+  --bg: #fafbfc;
+  --surface: #ffffff;
+  --surface-2: #f4f5f7;
+  --surface-3: #eceef1;
+  --border: rgba(17, 24, 39, 0.08);
+  --border-strong: rgba(17, 24, 39, 0.16);
+  --text: #14161a;
+  --muted: #5c6472;
+  --faint: #737b88;
+  --accent: #5c8a00;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(92, 138, 0, 0.09);
+  --accent-line: rgba(92, 138, 0, 0.32);
+  --gold: #a67c14;
+  --silver: #78818f;
+  --bronze: #9c6432;
+  --danger: #cf4436;
+  --danger-soft: rgba(207, 68, 54, 0.08);
+  --up: #12855a;
+  --down: #c2410c;
+  --grid-line: rgba(17, 24, 39, 0.07);
+  --overlay: rgba(15, 23, 42, 0.35);
+}
+
+@theme {
+  --font-sans:
+    'Inter var', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  color-scheme: dark;
+}
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Layout + surfaces
+ * ------------------------------------------------------------------ */
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+
+  /* A panel is a card that just holds rows – no padding, clipped corners. */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  /* Section heading: small, quiet, never shouting. */
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
+
+  .hairline {
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Controls
+   * ------------------------------------------------------------------ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.14s ease,
+      border-color 0.14s ease,
+      color 0.14s ease;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    filter: brightness(1.06);
+  }
+
+  .btn-quiet {
+    border-color: transparent;
+    color: var(--muted);
+  }
+  .btn-quiet:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: transparent;
+  }
+
+  .btn-sm {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 8px;
+    border: 0;
+    background: transparent;
+    color: var(--faint);
+    cursor: pointer;
+    transition:
+      color 0.14s ease,
+      background 0.14s ease;
+  }
+  .icon-btn:hover {
+    color: var(--text);
+    background: var(--surface-2);
+  }
+
+  /* Segmented control – the only place a "selected" state appears. */
+  .seg {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+    padding: 0.15rem;
+    border-radius: 10px;
+    background: var(--surface-2);
+    max-width: 100%;
+  }
+  .seg-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      color 0.14s ease,
+      background 0.14s ease;
+  }
+  .seg-item:hover {
+    color: var(--text);
+  }
+  .seg-item[data-active='true'] {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .input,
+  .select,
+  .textarea {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition:
+      border-color 0.14s ease,
+      background 0.14s ease;
+  }
+  .input::placeholder,
+  .textarea::placeholder {
+    color: var(--faint);
+  }
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    outline: none;
+    border-color: var(--accent-line);
+    background: var(--surface);
+  }
+  .textarea {
+    min-height: 7.5rem;
+    resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  .error-text {
+    color: var(--danger);
+    font-size: 0.82rem;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Data display
+   * ------------------------------------------------------------------ */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .rank {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--faint);
+    text-align: right;
+  }
+  .rank-1 {
+    color: var(--gold);
+  }
+  .rank-2 {
+    color: var(--silver);
+  }
+  .rank-3 {
+    color: var(--bronze);
+  }
+
+  .row {
+    display: grid;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.14s ease;
+  }
+  .row:first-child {
+    border-top: 0;
+  }
+  .row:hover {
+    background: var(--surface-2);
+  }
+
+  /* Leaderboard line: rank · athlete · score · detail */
+  .row-cols {
+    grid-template-columns: 1.6rem minmax(0, 1fr) 5rem 5.5rem;
+  }
+
+  /* Roster line: athlete · score · actions (no rank) */
+  .roster-cols {
+    grid-template-columns: minmax(0, 1fr) 4.5rem auto;
+  }
+
+  /* Metric: one number with a quiet label under it. */
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .metric-label {
+    font-size: 0.72rem;
+    color: var(--faint);
+  }
+  .metric-value {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-weight: 600;
+    color: #0b0f14;
+    flex: none;
+    user-select: none;
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+  .faint {
+    color: var(--faint);
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: 10px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion – barely there
+ * ------------------------------------------------------------------ */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ------------------------------------------------------------------ *
+ * Small screens: keep only the essentials
+ * ------------------------------------------------------------------ */
+@media (max-width: 420px) {
+  /* Three nav tabs + the theme toggle + "Add" must still fit a 320px phone. */
+  .nav-tab {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 0 1rem;
+  }
+  .row-cols {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  }
+  .row-extra,
+  .roster-detail {
+    display: none;
+  }
+}
