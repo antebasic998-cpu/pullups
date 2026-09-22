@@ -6,22 +6,26 @@ import { useDataVersion } from '../lib/store';
 import { formatKg, pluralize, reps } from '../lib/format';
 import { Avatar, EmptyState } from '../components/Bits';
 import { TrendDownIcon, TrendUpIcon } from '../components/Icons';
-
+import { ExerciseSelector } from '../components/ExerciseSelector';
 import { UserFormModal } from '../components/UserFormModal';
-import type { BoardMode, LeaderRow } from '../types';
+import type { BoardMode, ExerciseCategory, LeaderRow } from '../types';
 
 const BOARDS: { id: BoardMode; label: string; blurb: string }[] = [
   { id: 'best', label: 'Best', blurb: 'Bodyweight-normalized score' },
-  { id: 'absolute', label: 'Absolute', blurb: 'Raw pull-up counts, bodyweight ignored' },
+  { id: 'absolute', label: 'Absolute', blurb: 'Raw repetition counts, bodyweight ignored' },
   { id: 'improved', label: 'Most improved', blurb: 'Personal best compared with the first result' },
   { id: 'active', label: 'Most active', blurb: 'Sessions logged' },
 ];
 
 export function LeaderboardPage() {
+  const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const [mode, setMode] = useState<BoardMode>('best');
   const [addOpen, setAddOpen] = useState(false);
   const version = useDataVersion();
-  const { data, loading, error } = useAsync(() => api.board(mode), [mode, version]);
+  const { data, loading, error } = useAsync(
+    () => api.board(mode, selectedCategory?.slug),
+    [mode, selectedCategory?.slug, version],
+  );
   const navigate = useNavigate();
 
   const board = BOARDS.find((b) => b.id === mode) ?? BOARDS[0];
@@ -30,7 +34,10 @@ export function LeaderboardPage() {
     <div className="shell">
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="m-0 text-xl font-semibold tracking-tight">Leaderboard</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="m-0 text-xl font-semibold tracking-tight">Leaderboard</h1>
+            <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} compact />
+          </div>
           <p className="m-0 mt-1 text-sm muted">
             {board.blurb}
             {data && data.userCount > 0
@@ -129,10 +136,13 @@ function LeaderboardRow({ row, mode }: { row: LeaderRow; mode: BoardMode }) {
     ) : null;
 
   const f = figures(row, mode);
+  const isUnranked = row.rank === null;
 
   return (
     <Link to={`/users/${row.id}`} className="row row-cols">
-      <span className={`rank rank-${row.rank}`}>{row.rank}</span>
+      <span className={`rank ${isUnranked ? 'rank-unranked' : `rank-${row.rank}`}`}>
+        {isUnranked ? '—' : row.rank}
+      </span>
 
       <span className="flex min-w-0 items-center gap-2.5">
         <Avatar name={row.name} />
@@ -150,11 +160,13 @@ function LeaderboardRow({ row, mode }: { row: LeaderRow; mode: BoardMode }) {
       </span>
 
       <span className="num text-right font-semibold">
-        {f.value}
-        {f.suffix ? <span className="faint text-xs font-normal"> {f.suffix}</span> : null}
+        {isUnranked ? '—' : f.value}
+        {!isUnranked && f.suffix ? <span className="faint text-xs font-normal"> {f.suffix}</span> : null}
       </span>
 
-      <span className="row-extra truncate text-right text-xs muted">{f.detail}</span>
+      <span className="row-extra truncate text-right text-xs muted">
+        {isUnranked ? 'No attempts yet' : f.detail}
+      </span>
     </Link>
   );
 }

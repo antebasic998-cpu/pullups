@@ -22,6 +22,7 @@ dist/
 
 # Binaries and APKs
 *.apk
+.vercel/
 
 # Mobile native generated build directories
 mobile/ios/

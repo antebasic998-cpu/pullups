@@ -21,7 +21,7 @@ export function Layout() {
             className="hidden text-sm font-semibold no-underline sm:block"
             style={{ color: 'var(--text)' }}
           >
-            Pull-Up Leaderboard
+            Pull-Up & Chin-Up Leaderboard
           </NavLink>
 
           <nav className="flex items-center gap-1">

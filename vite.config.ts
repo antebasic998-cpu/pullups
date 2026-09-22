@@ -22,7 +22,7 @@ export default defineConfig({
   root: 'web',
   plugins: [react(), tailwindcss()],
   build: {
-    outDir: 'dist',
+    outDir: '../dist',
     emptyOutDir: true,
   },
   server: {

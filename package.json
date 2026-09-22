@@ -18,6 +18,7 @@
     "shoot": "node scripts/shoot.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.0",
     "express": "^4.21.2"
   },
   "devDependencies": {

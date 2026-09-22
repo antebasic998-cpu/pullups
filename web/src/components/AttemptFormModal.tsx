@@ -4,19 +4,20 @@ import { Modal } from './Modal';
 import { useToast } from './Toast';
 import { invalidate } from '../lib/store';
 import { todayISO } from '../lib/format';
-import type { UserSummary } from '../types';
+import type { ExerciseCategory, UserSummary } from '../types';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   user: UserSummary;
   medianMassKg: number;
+  category?: ExerciseCategory | null;
   onSaved?: () => void;
 }
 
 /** Log one attempt. Bodyweight is snapshotted with the attempt, so a bulking
  *  (or cutting) phase does not retroactively change old scores. */
-export function AttemptFormModal({ open, onClose, user, medianMassKg, onSaved }: Props) {
+export function AttemptFormModal({ open, onClose, user, medianMassKg, category, onSaved }: Props) {
   const toast = useToast();
   const [reps, setReps] = useState('');
   const [date, setDate] = useState(todayISO());
@@ -37,19 +38,27 @@ export function AttemptFormModal({ open, onClose, user, medianMassKg, onSaved }:
 
   const repsNum = Number(reps);
   const weightNum = Number(weight.replace(',', '.'));
+  const exponent = category?.normalizationExponent ?? 0.67;
   const preview =
     Number.isFinite(repsNum) && repsNum > 0 && Number.isFinite(weightNum) && weightNum > 0 && medianMassKg > 0
-      ? repsNum * (weightNum / medianMassKg) ** 0.67
+      ? repsNum * (weightNum / medianMassKg) ** exponent
       : null;
 
   async function submit() {
     setError(null);
-    if (!reps.trim()) return setError('How many pull-ups?');
+    const exerciseName = category?.name ?? 'pull-ups';
+    if (!reps.trim()) return setError(`How many ${exerciseName.toLowerCase()}?`);
     setBusy(true);
     try {
-      await api.addAttempt(user.id, { reps, date, weightKg: weight, note: note.trim() });
+      await api.addAttempt(user.id, {
+        categoryId: category?.id,
+        reps,
+        date,
+        weightKg: weight,
+        note: note.trim(),
+      });
       invalidate();
-      toast.success(`Logged ${Math.round(Number(reps))} pull-ups for ${user.name}.`);
+      toast.success(`Logged ${Math.round(Number(reps))} ${exerciseName.toLowerCase()} for ${user.name}.`);
       onSaved?.();
       onClose();
     } catch (err) {

@@ -135,7 +135,7 @@ export function UserFormModal({ open, onClose, user, onSaved }: Props) {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="field">
                 <label className="label" htmlFor="uf-pb">
-                  Pull-ups (PB)
+                  Reps (PB)
                 </label>
                 <input
                   id="uf-pb"

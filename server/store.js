@@ -1,146 +1,144 @@
-/**
- * Tiny JSON-file store. An office leaderboard has dozens of users and a few
- * thousand attempts – a single atomically-written JSON file is plenty, keeps the
- * data human-readable and portable, and has zero native dependencies.
- */
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { supabase } from './supabase.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR
-  ? path.resolve(process.env.DATA_DIR)
-  : path.resolve(__dirname, '..', 'data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
-
-const EMPTY = { users: [], sessions: [] };
+export const DEFAULT_CATEGORY = {
+  id: 'c01b1e85-3966-478d-b27c-bd7be751c1a8',
+  slug: 'pull-ups',
+  name: 'Pull-ups',
+  shortName: null,
+  description: '',
+  iconKey: 'pull-up',
+  unit: 'reps',
+  scoreType: 'bodyweight_normalized',
+  normalizationType: 'bodyweight_power',
+  normalizationExponent: 0.67,
+  isActive: true,
+  displayOrder: 1,
+};
 
 let cache = null;
-let loadedMtime = 0;
+let lastSyncTime = 0;
+const CACHE_TTL_MS = 3000; // 3 seconds in-memory TTL for serverless invocations
 
-function ensureDir() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-function fileMtime() {
-  try {
-    return fs.statSync(DB_FILE).mtimeMs;
-  } catch {
-    return 0;
-  }
-}
-
-function read() {
-  if (cache) {
-    // Someone edited or re-seeded db.json outside this process (npm run reset,
-    // a manual fix, a restored backup) – pick that up instead of clobbering it.
-    const mtime = fileMtime();
-    if (mtime !== 0 && mtime !== loadedMtime) cache = null;
-    else return cache;
-  }
-  ensureDir();
-  if (!fs.existsSync(DB_FILE)) {
-    cache = structuredClone(EMPTY);
-    loadedMtime = 0;
+export async function syncFromSupabase() {
+  const now = Date.now();
+  if (cache && now - lastSyncTime < CACHE_TTL_MS) {
     return cache;
   }
-  try {
-    const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    cache = {
-      users: Array.isArray(parsed.users) ? parsed.users : [],
-      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-    };
-  } catch (err) {
-    console.error(`[store] ${DB_FILE} is unreadable (${err.message}); starting empty.`);
-    cache = structuredClone(EMPTY);
-  }
-  loadedMtime = fileMtime();
-  return cache;
-}
 
-/** Atomic write: temp file + rename, so a crash can never truncate the DB. */
-function write() {
-  ensureDir();
-  const tmp = `${DB_FILE}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(cache, null, 2)}\n`, 'utf8');
-  fs.renameSync(tmp, DB_FILE);
-  loadedMtime = fileMtime();
+  try {
+    const [categoriesRes, usersRes, sessionsRes] = await Promise.all([
+      supabase
+        .from('exercise_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true }),
+      supabase.from('users').select('*').order('created_at', { ascending: true }),
+      supabase.from('sessions').select('*').order('created_at', { ascending: true }),
+    ]);
+
+    if (categoriesRes.error) console.error('[supabase] categories error:', categoriesRes.error.message);
+    if (usersRes.error) console.error('[supabase] users error:', usersRes.error.message);
+    if (sessionsRes.error) console.error('[supabase] sessions error:', sessionsRes.error.message);
+
+    const categories = categoriesRes.data && categoriesRes.data.length > 0
+      ? categoriesRes.data.map((c) => ({
+          id: c.id,
+          slug: c.slug,
+          name: c.name,
+          shortName: c.short_name,
+          description: c.description ?? '',
+          iconKey: c.icon_key,
+          unit: c.unit,
+          scoreType: c.score_type,
+          normalizationType: c.normalization_type,
+          normalizationExponent: Number(c.normalization_exponent),
+          isActive: c.is_active,
+          displayOrder: c.display_order,
+          createdAt: c.created_at,
+          updatedAt: c.updated_at,
+        }))
+      : [DEFAULT_CATEGORY];
+
+    const users = usersRes.data
+      ? usersRes.data.map((u) => ({
+          id: u.id,
+          name: u.name,
+          age: u.age,
+          weightKg: Number(u.weight_kg),
+          note: u.note ?? '',
+          createdAt: u.created_at,
+          updatedAt: u.updated_at,
+        }))
+      : [];
+
+    const defaultCatId = categories[0]?.id ?? DEFAULT_CATEGORY.id;
+
+    const sessions = sessionsRes.data
+      ? sessionsRes.data.map((s) => ({
+          id: s.id,
+          userId: s.user_id,
+          exerciseCategoryId: s.exercise_category_id ?? defaultCatId,
+          reps: Number(s.reps),
+          weightKg: Number(s.weight_kg),
+          date: s.date,
+          note: s.note ?? '',
+          createdAt: s.created_at,
+        }))
+      : [];
+
+    cache = { categories, users, sessions };
+    lastSyncTime = now;
+    return cache;
+  } catch (err) {
+    console.error('[supabase] sync exception:', err);
+    if (cache) return cache;
+    return { categories: [DEFAULT_CATEGORY], users: [], sessions: [] };
+  }
 }
 
 export const db = {
-  file: DB_FILE,
-  /** Read-only snapshot; do not mutate. */
   get data() {
-    return read();
+    return cache ?? { categories: [DEFAULT_CATEGORY], users: [], sessions: [] };
+  },
+  categories() {
+    return (cache?.categories && cache.categories.length > 0) ? cache.categories : [DEFAULT_CATEGORY];
+  },
+  category(idOrSlug) {
+    if (!idOrSlug) return null;
+    if (typeof idOrSlug === 'object' && 'id' in idOrSlug) return idOrSlug;
+    if (typeof idOrSlug !== 'string') return null;
+    const lower = idOrSlug.toLowerCase();
+    const cats = this.categories();
+    return cats.find((c) => c.id === idOrSlug || c.slug.toLowerCase() === lower) ?? null;
+  },
+  defaultCategory() {
+    return this.categories()[0] ?? DEFAULT_CATEGORY;
   },
   users() {
-    return read().users;
+    return cache?.users ?? [];
   },
   sessions() {
-    return read().sessions;
+    return cache?.sessions ?? [];
   },
   sessionsOf(userId) {
-    return read().sessions.filter((s) => s.userId === userId);
+    return (cache?.sessions ?? []).filter((s) => s.userId === userId);
+  },
+  sessionsOfCategory(categoryIdOrSlug) {
+    const cat = this.category(categoryIdOrSlug) ?? this.defaultCategory();
+    return (cache?.sessions ?? []).filter((s) => s.exerciseCategoryId === cat.id);
+  },
+  sessionsOfUserAndCategory(userId, categoryIdOrSlug) {
+    const cat = this.category(categoryIdOrSlug) ?? this.defaultCategory();
+    return (cache?.sessions ?? []).filter((s) => s.userId === userId && s.exerciseCategoryId === cat.id);
   },
   user(id) {
-    return read().users.find((u) => u.id === id) ?? null;
+    return (cache?.users ?? []).find((u) => u.id === id) ?? null;
   },
   session(id) {
-    return read().sessions.find((s) => s.id === id) ?? null;
+    return (cache?.sessions ?? []).find((s) => s.id === id) ?? null;
   },
-  insertUser(user) {
-    read().users.push(user);
-    write();
-    return user;
-  },
-  insertSession(session) {
-    read().sessions.push(session);
-    write();
-    return session;
-  },
-  updateUser(id, patch) {
-    const users = read().users;
-    const i = users.findIndex((u) => u.id === id);
-    if (i === -1) return null;
-    users[i] = { ...users[i], ...patch, id, updatedAt: new Date().toISOString() };
-    write();
-    return users[i];
-  },
-  deleteUser(id) {
-    const data = read();
-    const before = data.users.length;
-    data.users = data.users.filter((u) => u.id !== id);
-    if (data.users.length === before) return false;
-    data.sessions = data.sessions.filter((s) => s.userId !== id);
-    write();
-    return true;
-  },
-  deleteSession(id) {
-    const data = read();
-    const before = data.sessions.length;
-    data.sessions = data.sessions.filter((s) => s.id !== id);
-    if (data.sessions.length === before) return false;
-    write();
-    return true;
-  },
-  replaceAll(next) {
-    cache = {
-      users: Array.isArray(next.users) ? next.users : [],
-      sessions: Array.isArray(next.sessions) ? next.sessions : [],
-    };
-    write();
-    return cache;
-  },
-  isEmpty() {
-    const data = read();
-    return data.users.length === 0 && data.sessions.length === 0;
-  },
-  /** Re-read from disk, dropping the in-process cache. */
-  reload() {
+  invalidate() {
     cache = null;
-    loadedMtime = 0;
-    return read();
+    lastSyncTime = 0;
   },
 };
-
-export { DATA_DIR, DB_FILE };

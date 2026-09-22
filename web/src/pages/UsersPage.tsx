@@ -7,8 +7,9 @@ import { daysAgo, formatKg, pluralize, reps } from '../lib/format';
 import { Avatar, EmptyState } from '../components/Bits';
 import { AttemptFormModal } from '../components/AttemptFormModal';
 import { UserFormModal } from '../components/UserFormModal';
+import { ExerciseSelector } from '../components/ExerciseSelector';
 import { PlusIcon, SearchIcon } from '../components/Icons';
-import type { UserSummary } from '../types';
+import type { ExerciseCategory, UserSummary } from '../types';
 
 /**
  * The roster: who is on the board and their normalized PB, with one action per
@@ -17,9 +18,10 @@ import type { UserSummary } from '../types';
  */
 export function UsersPage() {
   const [params, setParams] = useSearchParams();
+  const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const version = useDataVersion();
   const navigate = useNavigate();
-  const { data, loading, error } = useAsync(() => api.users(), [version]);
+  const { data, loading, error } = useAsync(() => api.users(selectedCategory?.slug), [selectedCategory?.slug, version]);
 
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -44,7 +46,10 @@ export function UsersPage() {
     <div className="shell">
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="m-0 text-xl font-semibold tracking-tight">Athletes</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="m-0 text-xl font-semibold tracking-tight">Athletes</h1>
+            <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} compact />
+          </div>
           <p className="m-0 mt-1 text-sm muted">
             {data && data.userCount > 0
               ? `${pluralize(data.userCount, 'athlete')} · median ${formatKg(data.medianMassKg)}`
@@ -158,7 +163,13 @@ export function UsersPage() {
         onSaved={(user) => navigate(`/users/${user.id}`)}
       />
       {logging && data ? (
-        <AttemptFormModal open user={logging} medianMassKg={data.medianMassKg} onClose={() => setLogging(null)} />
+        <AttemptFormModal
+          open
+          user={logging}
+          medianMassKg={data.medianMassKg}
+          category={selectedCategory}
+          onClose={() => setLogging(null)}
+        />
       ) : null}
     </div>
   );

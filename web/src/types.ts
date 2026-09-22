@@ -54,15 +54,31 @@ export interface OfficeResponse extends Meta {
   leaderboard: { id: string; name: string; xp: number; level: Level; badges: number }[];
 }
 
+export interface ExerciseCategory {
+  id: string;
+  slug: string;
+  name: string;
+  shortName: string | null;
+  description: string;
+  iconKey: string;
+  unit: string;
+  scoreType: string;
+  normalizationType: string;
+  normalizationExponent: number;
+  isActive: boolean;
+  displayOrder: number;
+}
+
 export interface Attempt {
   id: string;
   userId: string;
+  exerciseCategoryId?: string;
   reps: number;
   weightKg: number;
   date: string;
   note: string;
   createdAt: string;
-  /** reps × (weight / office median) ^ 0.67 */
+  /** reps × (weight / office median) ^ exponent */
   normalized: number;
   /** The mass multiplier applied to the raw reps. */
   multiplier: number;
@@ -99,8 +115,8 @@ export interface UserSummary {
 }
 
 export interface LeaderRow extends UserSummary {
-  rank: number;
-  score: number;
+  rank: number | null;
+  score: number | null;
 }
 
 export interface Formula {
@@ -118,6 +134,7 @@ export interface Meta {
 
 export interface Board extends Meta {
   mode: BoardMode;
+  category: ExerciseCategory;
   rows: LeaderRow[];
 }
 

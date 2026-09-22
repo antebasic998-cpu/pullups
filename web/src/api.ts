@@ -1,4 +1,13 @@
-import type { Board, BoardMode, ImportResponse, Meta, OfficeResponse, UserResponse, UsersResponse } from './types';
+import type {
+  Board,
+  BoardMode,
+  ExerciseCategory,
+  ImportResponse,
+  Meta,
+  OfficeResponse,
+  UserResponse,
+  UsersResponse,
+} from './types';
 
 export class ApiError extends Error {
   status: number;
@@ -50,6 +59,7 @@ export interface UserInput {
 }
 
 export interface AttemptInput {
+  categoryId?: string;
   reps: string | number;
   date: string;
   weightKg?: string | number | null;
@@ -57,11 +67,15 @@ export interface AttemptInput {
 }
 
 export const api = {
-  meta: () => request<Meta>('/meta'),
-  board: (mode: BoardMode) => request<Board>(`/leaderboard?mode=${mode}`),
+  categories: () => request<{ categories: ExerciseCategory[] }>('/categories'),
+  meta: (category?: string) => request<Meta>(`/meta${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  board: (mode: BoardMode, category?: string) =>
+    request<Board>(`/leaderboard?mode=${mode}${category ? `&category=${encodeURIComponent(category)}` : ''}`),
   office: () => request<OfficeResponse>('/office'),
-  users: () => request<UsersResponse>('/users'),
-  user: (id: string) => request<UserResponse>(`/users/${id}`),
+  users: (category?: string) =>
+    request<UsersResponse>(`/users${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  user: (id: string, category?: string) =>
+    request<UserResponse>(`/users/${id}${category ? `?category=${encodeURIComponent(category)}` : ''}`),
 
   createUser: (input: UserInput) =>
     request<UserResponse>('/users', { method: 'POST', body: JSON.stringify(input) }),
@@ -72,6 +86,14 @@ export const api = {
   addAttempt: (userId: string, input: AttemptInput) =>
     request<UserResponse>(`/users/${userId}/sessions`, { method: 'POST', body: JSON.stringify(input) }),
   deleteAttempt: (attemptId: string) => request<{ ok: true }>(`/sessions/${attemptId}`, { method: 'DELETE' }),
-  importCsv: (userId: string, csv: string) =>
-    request<ImportResponse>(`/users/${userId}/import`, { method: 'POST', body: JSON.stringify({ csv }) }),
+  importCsv: (userId: string, csv: string, categoryId?: string) =>
+    request<ImportResponse>(`/users/${userId}/import`, {
+      method: 'POST',
+      body: JSON.stringify({ csv, categoryId }),
+    }),
+  verifyPassword: (password: string) =>
+    request<{ valid: boolean }>('/verify-password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
 };

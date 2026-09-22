@@ -31,18 +31,20 @@ export function round(value, digits = 2) {
  * Normalized score for one attempt.
  * Falls back to the raw rep count when the median is unknown (empty office).
  */
-export function normalizedScore(reps, athleteMassKg, medianMassKg) {
+export function normalizedScore(reps, athleteMassKg, medianMassKg, exponent = EXPONENT) {
   if (!Number.isFinite(reps)) return 0;
   if (!Number.isFinite(athleteMassKg) || !Number.isFinite(medianMassKg) || medianMassKg <= 0) {
     return round(reps);
   }
-  return round(reps * (athleteMassKg / medianMassKg) ** EXPONENT);
+  const exp = Number.isFinite(exponent) && exponent > 0 ? exponent : EXPONENT;
+  return round(reps * (athleteMassKg / medianMassKg) ** exp);
 }
 
 /** The mass multiplier applied to the reps, e.g. 1.18 for a 100 kg athlete at 82 kg median. */
-export function massMultiplier(athleteMassKg, medianMassKg) {
+export function massMultiplier(athleteMassKg, medianMassKg, exponent = EXPONENT) {
   if (!Number.isFinite(athleteMassKg) || !Number.isFinite(medianMassKg) || medianMassKg <= 0) return 1;
-  return round((athleteMassKg / medianMassKg) ** EXPONENT, 3);
+  const exp = Number.isFinite(exponent) && exponent > 0 ? exponent : EXPONENT;
+  return round((athleteMassKg / medianMassKg) ** exp, 3);
 }
 
 export function medianMassOf(users) {

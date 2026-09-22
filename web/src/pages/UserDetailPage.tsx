@@ -11,25 +11,30 @@ import { ConfirmDialog } from '../components/Modal';
 import { AttemptFormModal } from '../components/AttemptFormModal';
 import { ImportModal } from '../components/ImportModal';
 import { UserFormModal } from '../components/UserFormModal';
+import { ExerciseSelector } from '../components/ExerciseSelector';
 import { useToast } from '../components/Toast';
 import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '../components/Icons';
-import type { Board, UserResponse } from '../types';
+import type { Board, ExerciseCategory, UserResponse } from '../types';
 
 type Series = 'normalized' | 'absolute' | 'weight';
 
 export function UserDetailPage() {
   const { id = '' } = useParams();
+  const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const version = useDataVersion();
   const toast = useToast();
   const navigate = useNavigate();
 
   const { data, loading, error } = useAsync(
     () =>
-      Promise.all([api.user(id), api.board('best')]).then(([user, board]: [UserResponse, Board]) => ({
+      Promise.all([
+        api.user(id, selectedCategory?.slug),
+        api.board('best', selectedCategory?.slug),
+      ]).then(([user, board]: [UserResponse, Board]) => ({
         user,
         board,
       })),
-    [id, version],
+    [id, selectedCategory?.slug, version],
   );
 
   const [series, setSeries] = useState<Series>('normalized');
@@ -125,24 +130,27 @@ export function UserDetailPage() {
       </Link>
 
       {/* Who they are */}
-      <header className="mb-4 flex flex-wrap items-center gap-3">
-        <Avatar name={user.name} size={44} />
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 break-words text-xl font-semibold tracking-tight">{user.name}</h1>
-          <p className="m-0 mt-0.5 text-xs muted">
-            {[
-              user.age ? `${user.age} years` : null,
-              formatKg(user.weightKg),
-              `×${user.multiplier.toFixed(2)} mass`,
-              normRank ? `rank #${normRank} of ${total}` : null,
-              user.level ? `${user.xp} XP` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={user.name} size={44} />
+          <div className="min-w-0 flex-1">
+            <h1 className="m-0 break-words text-xl font-semibold tracking-tight">{user.name}</h1>
+            <p className="m-0 mt-0.5 text-xs muted">
+              {[
+                user.age ? `${user.age} years` : null,
+                formatKg(user.weightKg),
+                `×${user.multiplier.toFixed(2)} mass`,
+                normRank ? `rank #${normRank} of ${total}` : null,
+                user.level ? `${user.xp} XP` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} compact />
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setLogOpen(true)}>
             <PlusIcon size={14} />
             Log result
@@ -320,9 +328,20 @@ export function UserDetailPage() {
         Normalized uses the bodyweight recorded on the day, against the office median of {formatKg(medianKg)}.
       </p>
 
-      <AttemptFormModal open={logOpen} user={user} medianMassKg={medianKg} onClose={() => setLogOpen(false)} />
+      <AttemptFormModal
+        open={logOpen}
+        user={user}
+        medianMassKg={medianKg}
+        category={selectedCategory}
+        onClose={() => setLogOpen(false)}
+      />
       <UserFormModal open={editOpen} user={user} onClose={() => setEditOpen(false)} />
-      <ImportModal open={importOpen} user={user} onClose={() => setImportOpen(false)} />
+      <ImportModal
+        open={importOpen}
+        user={user}
+        category={selectedCategory}
+        onClose={() => setImportOpen(false)}
+      />
       <ConfirmDialog
         open={deleteOpen}
         title={`Remove ${user.name}?`}

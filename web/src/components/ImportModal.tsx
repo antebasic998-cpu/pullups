@@ -4,12 +4,13 @@ import { Modal } from './Modal';
 import { useToast } from './Toast';
 import { invalidate } from '../lib/store';
 import { UploadIcon } from './Icons';
-import type { UserSummary } from '../types';
+import type { ExerciseCategory, UserSummary } from '../types';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   user: UserSummary;
+  category?: ExerciseCategory | null;
   onImported?: () => void;
 }
 
@@ -25,7 +26,7 @@ function isoDaysAgo(days: number) {
 }
 
 /** Bulk-load a history: pasted spreadsheet rows or a .csv file. */
-export function ImportModal({ open, onClose, user, onImported }: Props) {
+export function ImportModal({ open, onClose, user, category, onImported }: Props) {
   const toast = useToast();
   const [csv, setCsv] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,7 +58,7 @@ export function ImportModal({ open, onClose, user, onImported }: Props) {
     setBusy(true);
     setErrors([]);
     try {
-      const res = await api.importCsv(user.id, csv);
+      const res = await api.importCsv(user.id, csv, category?.id);
       invalidate();
       setErrors(res.errors ?? []);
       if (res.imported > 0) {
