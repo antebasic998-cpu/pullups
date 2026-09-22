@@ -17,7 +17,7 @@ export const DEFAULT_CATEGORY = {
 
 let cache = null;
 let lastSyncTime = 0;
-const CACHE_TTL_MS = 3000; // 3 seconds in-memory TTL for serverless invocations
+const CACHE_TTL_MS = 20000; // 20 seconds in-memory TTL for serverless invocations
 
 export async function syncFromSupabase() {
   const now = Date.now();

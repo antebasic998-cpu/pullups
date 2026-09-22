@@ -36,15 +36,24 @@ export function LeaderboardPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="m-0 text-xl font-semibold tracking-tight">Leaderboard</h1>
-            <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} compact />
+            <ExerciseSelector
+              selected={selectedCategory}
+              onSelect={setSelectedCategory}
+              loading={loading}
+              compact
+            />
           </div>
           <p className="m-0 mt-1 text-sm muted">
             {board.blurb}
-            {data && data.userCount > 0
-              ? ` · office median ${formatKg(data.medianMassKg)} · ${pluralize(data.userCount, 'athlete')}`
-              : data
-                ? ' · nobody on the board yet'
-                : ''}
+            {loading ? (
+              <span className="faint"> · updating...</span>
+            ) : data && data.userCount > 0 ? (
+              ` · office median ${formatKg(data.medianMassKg)} · ${pluralize(data.userCount, 'athlete')}`
+            ) : data ? (
+              ' · nobody on the board yet'
+            ) : (
+              ''
+            )}
           </p>
         </div>
 
@@ -67,12 +76,12 @@ export function LeaderboardPage() {
 
       {error ? <p className="error-text">{error}</p> : null}
 
-      {loading && !data ? (
-        <SkeletonList />
+      {loading ? (
+        <SkeletonList categoryName={selectedCategory?.name} />
       ) : data && data.rows.length === 0 ? (
         <EmptyState
-          title="No athletes yet"
-          message="Add a colleague with their name, age and bodyweight. The office median — and everyone's normalized score — is worked out from the roster automatically."
+          title={`No ${selectedCategory?.name ?? 'results'} yet`}
+          message={`Nobody has logged ${selectedCategory?.name?.toLowerCase() ?? 'results'} yet. Be the first!`}
           action={
             <button type="button" className="btn btn-primary mt-2" onClick={() => setAddOpen(true)}>
               Add athlete
@@ -171,12 +180,24 @@ function LeaderboardRow({ row, mode }: { row: LeaderRow; mode: BoardMode }) {
   );
 }
 
-function SkeletonList() {
+function SkeletonList({ categoryName }: { categoryName?: string }) {
   return (
-    <div className="panel p-1">
-      {Array.from({ length: 7 }, (_, i) => (
-        <div key={i} className="skeleton my-1.5" style={{ height: 46 }} />
-      ))}
+    <div className="panel p-3 fade-in">
+      <div className="flex items-center justify-between pb-3 px-1 border-b border-[var(--border)]">
+        <div className="flex items-center gap-2 text-xs font-medium muted">
+          <span
+            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+            aria-hidden="true"
+          />
+          <span>Loading {categoryName ? `${categoryName} leaderboard...` : 'leaderboard...'}</span>
+        </div>
+        <div className="skeleton h-3 w-16" />
+      </div>
+      <div className="pt-2">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="skeleton my-2" style={{ height: 46 }} />
+        ))}
+      </div>
     </div>
   );
 }

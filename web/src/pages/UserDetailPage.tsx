@@ -150,7 +150,12 @@ export function UserDetailPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} compact />
+          <ExerciseSelector
+            selected={selectedCategory}
+            onSelect={setSelectedCategory}
+            loading={loading}
+            compact
+          />
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setLogOpen(true)}>
             <PlusIcon size={14} />
             Log result
@@ -174,159 +179,171 @@ export function UserDetailPage() {
         </div>
       </header>
 
+      {loading && (
+        <div className="mb-3 flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] py-2 text-xs font-medium muted fade-in">
+          <span
+            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+            aria-hidden="true"
+          />
+          <span>Updating for {selectedCategory?.name ?? 'category'}...</span>
+        </div>
+      )}
+
       {/* Level + streak */}
-      {user.level ? (
-        <section className="mb-3">
-          <LevelCard level={user.level} streaks={user.streaks} />
+      <div style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.2s ease', pointerEvents: loading ? 'none' : 'auto' }}>
+        {user.level ? (
+          <section className="mb-3">
+            <LevelCard level={user.level} streaks={user.streaks} />
+          </section>
+        ) : null}
+
+        {/* Career numbers */}
+        <section className="card mb-4 grid grid-cols-2 gap-4 px-4 py-3.5 sm:grid-cols-5">
+          <Metric
+            label="Normalized PB"
+            accent={user.sessionCount > 0}
+            value={user.sessionCount ? formatScore(user.pbNormalized) : '–'}
+          />
+          <Metric label={`PB ${selectedCategory?.name ?? 'reps'}`} value={user.sessionCount ? user.pbAbsolute : '–'} />
+          <Metric label="Total reps" value={user.totalReps} />
+          <Metric label="Sessions" value={user.sessionCount} />
+          <Metric
+            label="Since first result"
+            value={user.improvement === null ? '–' : `${user.improvement > 0 ? '+' : ''}${user.improvement}%`}
+          />
         </section>
-      ) : null}
 
-      {/* Career numbers */}
-      <section className="card mb-4 grid grid-cols-2 gap-4 px-4 py-3.5 sm:grid-cols-5">
-        <Metric
-          label="Normalized PB"
-          accent={user.sessionCount > 0}
-          value={user.sessionCount ? formatScore(user.pbNormalized) : '–'}
-        />
-        <Metric label="PB pull-ups" value={user.sessionCount ? user.pbAbsolute : '–'} />
-        <Metric label="Total reps" value={user.totalReps} />
-        <Metric label="Sessions" value={user.sessionCount} />
-        <Metric
-          label="Since first result"
-          value={user.improvement === null ? '–' : `${user.improvement > 0 ? '+' : ''}${user.improvement}%`}
-        />
-      </section>
+        {/* Progress */}
+        <section className="card mb-4 px-4 py-3.5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="m-0 section-title">Progress</h2>
+            <div className="seg" role="tablist" aria-label="Chart series">
+              {(
+                [
+                  ['normalized', 'Normalized'],
+                  ['absolute', 'Reps'],
+                  ['weight', 'Bodyweight'],
+                ] as [Series, string][]
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={series === key}
+                  data-active={series === key}
+                  className="seg-item"
+                  onClick={() => setSeries(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Progress */}
-      <section className="card mb-4 px-4 py-3.5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="m-0 section-title">Progress</h2>
-          <div className="seg" role="tablist" aria-label="Chart series">
-            {(
-              [
-                ['normalized', 'Normalized'],
-                ['absolute', 'Pull-ups'],
-                ['weight', 'Bodyweight'],
-              ] as [Series, string][]
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={series === key}
-                data-active={series === key}
-                className="seg-item"
-                onClick={() => setSeries(key)}
-              >
-                {label}
-              </button>
+          <ScoreChart
+            points={chartPoints}
+            unit={active.unit}
+            decimals={active.decimals}
+            color={active.color}
+            height={240}
+            emptyMessage="No attempts yet."
+          />
+        </section>
+
+        {/* Badges */}
+        <section className="panel mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <h2 className="m-0 section-title">Badges</h2>
+            <span className="text-xs faint">
+              {user.unlockedBadgeCount} of {user.badges.length} unlocked
+            </span>
+          </div>
+          <div
+            className="grid gap-2 border-t px-4 py-3.5 sm:grid-cols-2 lg:grid-cols-3"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            {user.badges.map((badge) => (
+              <BadgeTile key={badge.id} badge={badge} />
             ))}
           </div>
-        </div>
+        </section>
 
-        <ScoreChart
-          points={chartPoints}
-          unit={active.unit}
-          decimals={active.decimals}
-          color={active.color}
-          height={240}
-          emptyMessage="No attempts yet."
-        />
-      </section>
-
-      {/* Badges */}
-      <section className="panel mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <h2 className="m-0 section-title">Badges</h2>
-          <span className="text-xs faint">
-            {user.unlockedBadgeCount} of {user.badges.length} unlocked
-          </span>
-        </div>
-        <div
-          className="grid gap-2 border-t px-4 py-3.5 sm:grid-cols-2 lg:grid-cols-3"
-          style={{ borderColor: 'var(--border)' }}
-        >
-          {user.badges.map((badge) => (
-            <BadgeTile key={badge.id} badge={badge} />
-          ))}
-        </div>
-      </section>
-
-      {/* History */}
-      <section className="panel">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <h2 className="m-0 section-title">History</h2>
-          <span className="text-xs faint">
-            {user.sessionCount > 0 ? `last logged ${daysAgo(user.lastResult?.date)}` : 'nothing logged yet'}
-          </span>
-        </div>
-
-        {history.length === 0 ? (
-          <div className="border-t px-4 py-8 text-center text-sm muted" style={{ borderColor: 'var(--border)' }}>
-            One set of pull-ups and {user.name} is on the board.
+        {/* History */}
+        <section className="panel">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <h2 className="m-0 section-title">History</h2>
+            <span className="text-xs faint">
+              {user.sessionCount > 0 ? `last logged ${daysAgo(user.lastResult?.date)}` : 'nothing logged yet'}
+            </span>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm" style={{ minWidth: 440 }}>
-              <thead>
-                <tr className="text-xs faint">
-                  <th className="px-4 py-2 text-left font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                    Date
-                  </th>
-                  <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                    Pull-ups
-                  </th>
-                  <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                    Weight
-                  </th>
-                  <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                    Normalized
-                  </th>
-                  <th className="w-10" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }} />
-                </tr>
-              </thead>
-              <tbody>
-                {visibleHistory.map((s) => (
-                  <tr key={s.id} className="group" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-4 py-2.5 num">
-                      {formatDate(s.date)}
-                      {s.note ? <div className="text-xs faint">{s.note}</div> : null}
-                    </td>
-                    <td className="px-4 py-2.5 text-right num">{s.reps}</td>
-                    <td className="px-4 py-2.5 text-right num muted">{formatKg(s.weightKg)}</td>
-                    <td className="px-4 py-2.5 text-right num font-medium" style={{ color: 'var(--accent)' }}>
-                      {formatScore(s.normalized)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right">
-                      <button
-                        type="button"
-                        className="icon-btn opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                        title="Delete this result"
-                        aria-label="Delete this result"
-                        onClick={() => void removeAttempt(s.id)}
-                      >
-                        <TrashIcon size={14} />
-                      </button>
-                    </td>
+
+          {history.length === 0 ? (
+            <div className="border-t px-4 py-8 text-center text-sm muted" style={{ borderColor: 'var(--border)' }}>
+              No {selectedCategory?.name?.toLowerCase() ?? 'results'} logged yet for {user.name}.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm" style={{ minWidth: 440 }}>
+                <thead>
+                  <tr className="text-xs faint">
+                    <th className="px-4 py-2 text-left font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+                      Date
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+                      Reps
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+                      Weight
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+                      Normalized
+                    </th>
+                    <th className="w-10" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }} />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {visibleHistory.map((s) => (
+                    <tr key={s.id} className="group" style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-4 py-2.5 num">
+                        {formatDate(s.date)}
+                        {s.note ? <div className="text-xs faint">{s.note}</div> : null}
+                      </td>
+                      <td className="px-4 py-2.5 text-right num">{s.reps}</td>
+                      <td className="px-4 py-2.5 text-right num muted">{formatKg(s.weightKg)}</td>
+                      <td className="px-4 py-2.5 text-right num font-medium" style={{ color: 'var(--accent)' }}>
+                        {formatScore(s.normalized)}
+                      </td>
+                      <td className="px-2 py-2.5 text-right">
+                        <button
+                          type="button"
+                          className="icon-btn opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                          title="Delete this result"
+                          aria-label="Delete this result"
+                          onClick={() => void removeAttempt(s.id)}
+                        >
+                          <TrashIcon size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-        {history.length > 8 ? (
-          <div className="border-t px-4 py-2.5" style={{ borderColor: 'var(--border)' }}>
-            <button type="button" className="btn btn-sm btn-quiet" onClick={() => setShowAll((v) => !v)}>
-              {showAll ? 'Show less' : `Show all ${history.length}`}
-            </button>
-          </div>
-        ) : null}
-      </section>
+          {history.length > 8 ? (
+            <div className="border-t px-4 py-2.5" style={{ borderColor: 'var(--border)' }}>
+              <button type="button" className="btn btn-sm btn-quiet" onClick={() => setShowAll((v) => !v)}>
+                {showAll ? 'Show less' : `Show all ${history.length}`}
+              </button>
+            </div>
+          ) : null}
+        </section>
 
-      <p className="mt-3 text-xs faint">
-        Normalized uses the bodyweight recorded on the day, against the office median of {formatKg(medianKg)}.
-      </p>
+        <p className="mt-3 text-xs faint">
+          Normalized uses the bodyweight recorded on the day, against the office median of {formatKg(medianKg)}.
+        </p>
+      </div>
 
       <AttemptFormModal
         open={logOpen}

@@ -6,9 +6,10 @@ interface Props {
   selected: ExerciseCategory | null;
   onSelect: (category: ExerciseCategory) => void;
   compact?: boolean;
+  loading?: boolean;
 }
 
-export function ExerciseSelector({ selected, onSelect, compact }: Props) {
+export function ExerciseSelector({ selected, onSelect, compact, loading }: Props) {
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function ExerciseSelector({ selected, onSelect, compact }: Props) {
       {categories.map((cat) => {
         const isSelected = selected?.id === cat.id || selected?.slug === cat.slug;
         const icon = cat.slug.includes('chin') ? '🤸' : '💪';
+        const showSpinner = isSelected && loading;
         return (
           <button
             key={cat.id}
@@ -53,7 +55,16 @@ export function ExerciseSelector({ selected, onSelect, compact }: Props) {
             }`}
             onClick={() => onSelect(cat)}
           >
-            <span>{icon}</span>
+            <span className="inline-flex items-center justify-center w-4 h-4">
+              {showSpinner ? (
+                <span
+                  className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  aria-hidden="true"
+                />
+              ) : (
+                <span>{icon}</span>
+              )}
+            </span>
             <span>{cat.name}</span>
           </button>
         );

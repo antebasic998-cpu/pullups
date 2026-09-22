@@ -48,14 +48,23 @@ export function UsersPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="m-0 text-xl font-semibold tracking-tight">Athletes</h1>
-            <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} compact />
+            <ExerciseSelector
+              selected={selectedCategory}
+              onSelect={setSelectedCategory}
+              loading={loading}
+              compact
+            />
           </div>
           <p className="m-0 mt-1 text-sm muted">
-            {data && data.userCount > 0
-              ? `${pluralize(data.userCount, 'athlete')} · median ${formatKg(data.medianMassKg)}`
-              : data
-                ? 'Nobody on the board yet'
-                : 'Personal bests'}
+            {loading ? (
+              <span className="faint">Updating athlete roster...</span>
+            ) : data && data.userCount > 0 ? (
+              `${pluralize(data.userCount, 'athlete')} · median ${formatKg(data.medianMassKg)}`
+            ) : data ? (
+              'Nobody on the board yet'
+            ) : (
+              'Personal bests'
+            )}
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setAddOpen(true)}>
@@ -79,11 +88,20 @@ export function UsersPage() {
 
       {error ? <p className="error-text">{error}</p> : null}
 
-      {loading && !data ? (
-        <div className="panel p-1">
-          {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className="skeleton my-1.5" style={{ height: 46 }} />
-          ))}
+      {loading ? (
+        <div className="panel p-3 fade-in">
+          <div className="flex items-center gap-2 pb-3 px-1 border-b border-[var(--border)] text-xs font-medium muted">
+            <span
+              className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+              aria-hidden="true"
+            />
+            <span>Loading {selectedCategory?.name ?? 'exercise'} personal bests...</span>
+          </div>
+          <div className="pt-2">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="skeleton my-2" style={{ height: 46 }} />
+            ))}
+          </div>
         </div>
       ) : users.length === 0 ? (
         <EmptyState
