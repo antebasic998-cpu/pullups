@@ -162,14 +162,7 @@ function CelebrationModal({
       }).start();
     }
 
-    // 4. Auto-dismiss timer (3.5s for level up or badges, 2.8s for regular XP gain)
-    const timeoutDuration = data.leveledUp || data.newBadges.length > 0 ? 3800 : 2800;
-    const timer = setTimeout(() => {
-      onDismiss();
-    }, timeoutDuration);
-
     return () => {
-      clearTimeout(timer);
       xpAnim.removeListener(listenerId);
     };
   }, [visible, data]);
@@ -367,11 +360,9 @@ function CelebrationModal({
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity activeOpacity={0.7} onPress={onDismiss}>
-                <Text style={[styles.skipHint, { color: colors.faint }]}>
-                  Tap anywhere to skip
-                </Text>
-              </TouchableOpacity>
+              <Text style={[styles.skipHint, { color: colors.faint }]}>
+                Tap outside or the button to close
+              </Text>
             </Animated.View>
       </View>
     </Modal>

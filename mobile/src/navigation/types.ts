@@ -7,4 +7,5 @@ export type TabParamList = {
   Leaderboard: { category?: string } | undefined;
   Awards: undefined;
   Athletes: undefined;
+  Settings: undefined;
 };

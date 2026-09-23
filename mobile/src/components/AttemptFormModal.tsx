@@ -4,6 +4,7 @@ import { api, ApiError } from '../api';
 import { todayISO } from '../lib/format';
 import { invalidate } from '../lib/store';
 import { useTheme } from '../lib/ThemeContext';
+import { useSettings } from '../lib/SettingsContext';
 import { useToast } from './Toast';
 import { useCelebration } from './Celebration';
 import { AppModal } from './Modal';
@@ -28,6 +29,7 @@ export function AttemptFormModal({
 }) {
   const toast = useToast();
   const { celebrate } = useCelebration();
+  const { celebrationsEnabled } = useSettings();
   const { colors } = useTheme();
   const [category, setCategory] = useState<ExerciseCategory>(
     initialCategory ?? user.category ?? db.defaultCategory()
@@ -89,7 +91,7 @@ export function AttemptFormModal({
       });
       invalidate();
       onClose();
-      if (res.celebration && res.celebration.xpGained > 0) {
+      if (res.celebration && res.celebration.xpGained > 0 && celebrationsEnabled) {
         setTimeout(() => {
           celebrate(res.celebration!);
         }, 300);

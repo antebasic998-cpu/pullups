@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from './src/lib/ThemeContext';
+import { SettingsProvider } from './src/lib/SettingsContext';
 import { ToastProvider } from './src/components/Toast';
 import { CelebrationProvider } from './src/components/Celebration';
 import { db, initDb, subscribeToRealtime } from './src/core/db';
@@ -75,13 +76,15 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <ToastProvider>
-            <CelebrationProvider>
-              <Boot>
-                <RootNavigator />
-              </Boot>
-            </CelebrationProvider>
-          </ToastProvider>
+          <SettingsProvider>
+            <ToastProvider>
+              <CelebrationProvider>
+                <Boot>
+                  <RootNavigator />
+                </Boot>
+              </CelebrationProvider>
+            </ToastProvider>
+          </SettingsProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

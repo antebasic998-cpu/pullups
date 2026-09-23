@@ -6,6 +6,7 @@ import { AwardsScreen } from '../screens/AwardsScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { UserDetailScreen } from '../screens/UserDetailScreen';
 import { UsersScreen } from '../screens/UsersScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { UserFormModal } from '../components/UserFormModal';
 import { useTheme } from '../lib/ThemeContext';
 import { useState } from 'react';
@@ -23,6 +24,7 @@ const linking: LinkingOptions<RootStackParamList> = {
           Leaderboard: 'board/:category?',
           Awards: 'awards',
           Athletes: 'athletes',
+          Settings: 'settings',
         },
       },
       UserDetail: 'users/:id/:category?',
@@ -31,7 +33,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 function TabIcon({ label, focused, color }: { label: string; focused: boolean; color: string }) {
-  const icons: Record<string, string> = { Leaderboard: '🏆', Awards: '🎖', Athletes: '👥' };
+  const icons: Record<string, string> = { Leaderboard: '🏆', Awards: '🎖', Athletes: '👥', Settings: '⚙️' };
   return <Text style={{ fontSize: focused ? 18 : 16, opacity: focused ? 1 : 0.65, color }}>{icons[label] ?? '•'}</Text>;
 }
 
@@ -75,6 +77,7 @@ function MainTabs() {
             ),
           }}
         />
+        <Tab.Screen name="Settings" component={SettingsScreen} />
       </Tab.Navigator>
       <UserFormModal visible={addOpen} onClose={() => setAddOpen(false)} />
     </>
