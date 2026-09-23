@@ -90,11 +90,18 @@ export const BADGES = [
     tier: TIERS.bronze,
     how: 'Log your very first result.',
   },
+  { id: 'reps_5', emoji: '🖐️', name: '5 Club', tier: TIERS.bronze, how: 'Reach 5 pull-ups in one set.' },
   { id: 'reps_10', emoji: '🔟', name: '10 Club', tier: TIERS.bronze, how: 'Reach 10 pull-ups in one set.' },
-  { id: 'reps_20', emoji: '🏅', name: '20 Club', tier: TIERS.silver, how: 'Reach 20 pull-ups in one set.' },
-  { id: 'reps_30', emoji: '🥇', name: '30 Club', tier: TIERS.gold, how: 'Reach 30 pull-ups in one set.' },
-  { id: 'reps_50', emoji: '👑', name: '50 Club', tier: TIERS.legend, how: 'Reach 50 pull-ups in one set.' },
-  { id: 'century', emoji: '💯', name: 'Century', tier: TIERS.silver, how: 'Record 100 pull-ups in total.' },
+  { id: 'reps_15', emoji: '🦾', name: '15 Club', tier: TIERS.silver, how: 'Reach 15 pull-ups in one set.' },
+  { id: 'reps_20', emoji: '🥈', name: '20 Club', tier: TIERS.silver, how: 'Reach 20 pull-ups in one set.' },
+  { id: 'reps_25', emoji: '🥇', name: '25 Club', tier: TIERS.gold, how: 'Reach 25 pull-ups in one set.' },
+  { id: 'reps_30', emoji: '👑', name: '30 Club', tier: TIERS.legend, how: 'Reach 30 pull-ups in one set.' },
+  { id: 'total_100', emoji: '💯', name: '100 Total', tier: TIERS.bronze, how: 'Record 100 pull-ups in total.' },
+  { id: 'total_200', emoji: '🎯', name: '200 Total', tier: TIERS.bronze, how: 'Record 200 pull-ups in total.' },
+  { id: 'total_500', emoji: '⚡', name: '500 Total', tier: TIERS.silver, how: 'Record 500 pull-ups in total.' },
+  { id: 'total_1000', emoji: '💥', name: '1,000 Total', tier: TIERS.silver, how: 'Record 1,000 pull-ups in total.' },
+  { id: 'total_5000', emoji: '🏆', name: '5,000 Total', tier: TIERS.gold, how: 'Record 5,000 pull-ups in total.' },
+  { id: 'total_10000', emoji: '🌌', name: '10,000 Total', tier: TIERS.legend, how: 'Record 10,000 pull-ups in total.' },
   {
     id: 'new_pb',
     emoji: '⚡',
@@ -330,15 +337,24 @@ export function buildGame({ users, sessions, medianMassKg }) {
     boardBest.set(session.userId, Math.max(boardBest.get(session.userId) ?? 0, normalized));
 
     // ---- badges tied to a single attempt
+    if (reps >= 5) unlock(entry, 'reps_5', date);
     if (reps >= 10) unlock(entry, 'reps_10', date);
+    if (reps >= 15) unlock(entry, 'reps_15', date);
     if (reps >= 20) unlock(entry, 'reps_20', date);
+    if (reps >= 25) unlock(entry, 'reps_25', date);
     if (reps >= 30) unlock(entry, 'reps_30', date);
-    if (reps >= 50) unlock(entry, 'reps_50', date);
     if (mass >= 90 && reps >= 10) unlock(entry, 'heavy_hitter', date);
     if (mass < 70 && reps >= 15) unlock(entry, 'lightweight_beast', date);
     if (normalized > OUTLIER_SCORE) unlock(entry, 'outlier', date);
     unlock(entry, 'first_rep', date);
-    if (entry.totalReps >= 100) unlock(entry, 'century', date);
+
+    // ---- total volume milestones
+    if (entry.totalReps >= 100) unlock(entry, 'total_100', date);
+    if (entry.totalReps >= 200) unlock(entry, 'total_200', date);
+    if (entry.totalReps >= 500) unlock(entry, 'total_500', date);
+    if (entry.totalReps >= 1000) unlock(entry, 'total_1000', date);
+    if (entry.totalReps >= 5000) unlock(entry, 'total_5000', date);
+    if (entry.totalReps >= 10000) unlock(entry, 'total_10000', date);
 
     // ---- weekly bookkeeping for the office awards
     const weekBest = entry.bestByWeek.get(week) ?? 0;
@@ -432,16 +448,30 @@ export function currentWeek() {
 /** Badges you can watch creep up, with the number that drives them. */
 function badgeProgress(id, athlete) {
   switch (id) {
+    case 'reps_5':
+      return { value: athlete.pbReps, target: 5 };
     case 'reps_10':
       return { value: athlete.pbReps, target: 10 };
+    case 'reps_15':
+      return { value: athlete.pbReps, target: 15 };
     case 'reps_20':
       return { value: athlete.pbReps, target: 20 };
+    case 'reps_25':
+      return { value: athlete.pbReps, target: 25 };
     case 'reps_30':
       return { value: athlete.pbReps, target: 30 };
-    case 'reps_50':
-      return { value: athlete.pbReps, target: 50 };
-    case 'century':
+    case 'total_100':
       return { value: athlete.totalReps, target: 100 };
+    case 'total_200':
+      return { value: athlete.totalReps, target: 200 };
+    case 'total_500':
+      return { value: athlete.totalReps, target: 500 };
+    case 'total_1000':
+      return { value: athlete.totalReps, target: 1000 };
+    case 'total_5000':
+      return { value: athlete.totalReps, target: 5000 };
+    case 'total_10000':
+      return { value: athlete.totalReps, target: 10000 };
     case 'consistency':
       return { value: athlete.streaks.bestWeeks, target: 4 };
     case 'unstoppable':
