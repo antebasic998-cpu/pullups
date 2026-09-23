@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { useAsync } from '../lib/hooks';
 import { invalidate, useDataVersion } from '../lib/store';
@@ -20,10 +20,17 @@ type Series = 'normalized' | 'absolute' | 'weight';
 
 export function UserDetailPage() {
   const { id = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categorySlug = searchParams.get('category');
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const version = useDataVersion();
   const toast = useToast();
   const navigate = useNavigate();
+
+  const handleCategorySelect = (cat: ExerciseCategory) => {
+    setSelectedCategory(cat);
+    setSearchParams({ category: cat.slug }, { replace: true });
+  };
 
   const { data, loading, error } = useAsync(
     () =>
@@ -152,8 +159,9 @@ export function UserDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <ExerciseSelector
             selected={selectedCategory}
-            onSelect={setSelectedCategory}
+            onSelect={handleCategorySelect}
             loading={loading}
+            initialSlug={categorySlug}
             compact
           />
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setLogOpen(true)}>

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { useTheme } from '../lib/ThemeContext';
 
 export function TextField({
@@ -8,25 +8,37 @@ export function TextField({
   placeholder,
   keyboardType = 'default',
   multiline,
+  autoFocus,
+  inputRef,
+  returnKeyType,
+  onSubmitEditing,
 }: {
   label: string;
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'numeric' | 'decimal-pad';
+  keyboardType?: TextInputProps['keyboardType'];
   multiline?: boolean;
+  autoFocus?: boolean;
+  inputRef?: React.Ref<TextInput>;
+  returnKeyType?: TextInputProps['returnKeyType'];
+  onSubmitEditing?: () => void;
 }) {
   const { colors } = useTheme();
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.faint}
         keyboardType={keyboardType}
         multiline={multiline}
+        autoFocus={autoFocus}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
         style={[
           styles.input,
           multiline && styles.multiline,

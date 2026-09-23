@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api';
 import { Modal } from './Modal';
 import { useToast } from './Toast';
+import { ExerciseSelector } from './ExerciseSelector';
 import { invalidate } from '../lib/store';
 import { todayISO } from '../lib/format';
 import type { ExerciseCategory, UserSummary } from '../types';
@@ -19,26 +20,31 @@ interface Props {
  *  (or cutting) phase does not retroactively change old scores. */
 export function AttemptFormModal({ open, onClose, user, medianMassKg, category, onSaved }: Props) {
   const toast = useToast();
+  const [activeCategory, setActiveCategory] = useState<ExerciseCategory | null>(category ?? null);
   const [reps, setReps] = useState('');
   const [date, setDate] = useState(todayISO());
   const [weight, setWeight] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
-    setReps('');
-    setDate(todayISO());
-    setWeight(String(user.weightKg));
-    setNote('');
-    setError(null);
-    setBusy(false);
-  }, [open, user]);
+    if (open && !wasOpen.current) {
+      setActiveCategory(category ?? null);
+      setReps('');
+      setDate(todayISO());
+      setWeight(String(user.weightKg));
+      setNote('');
+      setError(null);
+      setBusy(false);
+    }
+    wasOpen.current = open;
+  }, [open, category, user]);
 
   const repsNum = Number(reps);
   const weightNum = Number(weight.replace(',', '.'));
-  const exponent = category?.normalizationExponent ?? 0.67;
+  const exponent = activeCategory?.normalizationExponent ?? category?.normalizationExponent ?? 0.67;
   const preview =
     Number.isFinite(repsNum) && repsNum > 0 && Number.isFinite(weightNum) && weightNum > 0 && medianMassKg > 0
       ? repsNum * (weightNum / medianMassKg) ** exponent
@@ -46,12 +52,12 @@ export function AttemptFormModal({ open, onClose, user, medianMassKg, category, 
 
   async function submit() {
     setError(null);
-    const exerciseName = category?.name ?? 'pull-ups';
+    const exerciseName = activeCategory?.name ?? category?.name ?? 'pull-ups';
     if (!reps.trim()) return setError(`How many ${exerciseName.toLowerCase()}?`);
     setBusy(true);
     try {
       await api.addAttempt(user.id, {
-        categoryId: category?.id,
+        categoryId: activeCategory?.id ?? category?.id,
         reps,
         date,
         weightKg: weight,
@@ -87,10 +93,19 @@ export function AttemptFormModal({ open, onClose, user, medianMassKg, category, 
       }
     >
       <div className="flex flex-col gap-4">
+        <div className="field">
+          <label className="label">Exercise</label>
+          <ExerciseSelector
+            selected={activeCategory}
+            onSelect={setActiveCategory}
+            compact
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="field">
             <label className="label" htmlFor="af-reps">
-              Pull-ups completed
+              {activeCategory?.name ?? category?.name ?? 'Pull-ups'} completed
             </label>
             <input
               id="af-reps"

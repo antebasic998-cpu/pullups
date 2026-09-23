@@ -338,9 +338,9 @@ body {
     background: var(--surface-2);
   }
 
-  /* Leaderboard line: rank · athlete · score · detail */
+  /* Leaderboard line: rank · athlete · score · detail · action */
   .row-cols {
-    grid-template-columns: 1.6rem minmax(0, 1fr) 5rem 5.5rem;
+    grid-template-columns: 1.6rem minmax(0, 1fr) 5rem 5.5rem auto;
   }
 
   /* Roster line: athlete · score · actions (no rank) */
@@ -455,7 +455,7 @@ body {
     padding: 0 1rem;
   }
   .row-cols {
-    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto auto;
   }
   .row-extra,
   .roster-detail {

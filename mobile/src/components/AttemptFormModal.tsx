@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, ApiError } from '../api';
 import { todayISO } from '../lib/format';
 import { invalidate } from '../lib/store';
@@ -38,16 +38,25 @@ export function AttemptFormModal({
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const wasVisible = useRef(false);
+  const repsInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (!visible) return;
-    setCategory(initialCategory ?? user.category ?? db.defaultCategory());
-    setReps('');
-    setDate(todayISO());
-    setWeight(String(user.weightKg));
-    setNote('');
-    setError(null);
-    setBusy(false);
+    if (visible && !wasVisible.current) {
+      setCategory(initialCategory ?? user.category ?? db.defaultCategory());
+      setReps('');
+      setDate(todayISO());
+      setWeight(String(user.weightKg));
+      setNote('');
+      setError(null);
+      setBusy(false);
+
+      const timer = setTimeout(() => {
+        repsInputRef.current?.focus();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+    wasVisible.current = visible;
   }, [visible, user, initialCategory]);
 
   const repsNum = Number(reps);
@@ -108,10 +117,13 @@ export function AttemptFormModal({
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
             <TextField
+              inputRef={repsInputRef}
+              autoFocus
               label={`${category.name} completed`}
               value={reps}
               onChangeText={(v) => setReps(v.replace(/[^\d]/g, ''))}
-              keyboardType="numeric"
+              keyboardType="number-pad"
+              returnKeyType="done"
               placeholder="12"
             />
           </View>

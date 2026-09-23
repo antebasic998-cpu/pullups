@@ -7,9 +7,10 @@ interface Props {
   onSelect: (category: ExerciseCategory) => void;
   compact?: boolean;
   loading?: boolean;
+  initialSlug?: string | null;
 }
 
-export function ExerciseSelector({ selected, onSelect, compact, loading }: Props) {
+export function ExerciseSelector({ selected, onSelect, compact, loading, initialSlug }: Props) {
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
 
   useEffect(() => {
@@ -18,14 +19,15 @@ export function ExerciseSelector({ selected, onSelect, compact, loading }: Props
       if (active && res.categories?.length > 0) {
         setCategories(res.categories);
         if (!selected) {
-          onSelect(res.categories[0]);
+          const match = initialSlug ? res.categories.find((c) => c.slug === initialSlug) : null;
+          onSelect(match ?? res.categories[0]);
         }
       }
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialSlug]);
 
   if (categories.length <= 1) return null;
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { Avatar, EmptyState, Muted, Panel, Skeleton } from '../components/Bits';
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { UserFormModal } from '../components/UserFormModal';
+import { AttemptFormModal } from '../components/AttemptFormModal';
 import { useAsync } from '../lib/hooks';
 import { formatKg, pluralize, reps } from '../lib/format';
 import { useDataVersion } from '../lib/store';
@@ -64,18 +65,27 @@ export function LeaderboardScreen() {
   );
   const [mode, setMode] = useState<BoardMode>('best');
   const [addOpen, setAddOpen] = useState(false);
+  const [loggingUser, setLoggingUser] = useState<LeaderRow | null>(null);
   const version = useDataVersion();
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  const lastParamCategory = useRef(route.params?.category);
   useEffect(() => {
-    if (route.params?.category) {
+    if (route.params?.category && route.params?.category !== lastParamCategory.current) {
+      lastParamCategory.current = route.params.category;
       const found = db.category(route.params.category);
-      if (found && found.id !== selectedCategory.id) {
+      if (found) {
         setSelectedCategory(found);
       }
     }
-  }, [route.params?.category, selectedCategory.id]);
+  }, [route.params?.category]);
+
+  const handleSelectCategory = (cat: ExerciseCategory) => {
+    lastParamCategory.current = cat.slug;
+    setSelectedCategory(cat);
+    navigation.setParams({ category: cat.slug } as any);
+  };
 
   const { data, loading, error } = useAsync(
     () => api.board(selectedCategory.slug, mode),
@@ -93,7 +103,7 @@ export function LeaderboardScreen() {
       <View style={styles.selectorWrapper}>
         <ExerciseSelector
           selected={selectedCategory}
-          onSelect={(cat) => setSelectedCategory(cat)}
+          onSelect={handleSelectCategory}
         />
       </View>
 
@@ -147,37 +157,55 @@ export function LeaderboardScreen() {
               const isUnranked = row.rank === null;
 
               return (
-                <TouchableOpacity
+                <View
                   key={row.id}
-                  onPress={() => navigation.navigate('UserDetail', { id: row.id, category: selectedCategory.slug })}
                   style={[
                     styles.row,
                     i > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
                     isUnranked && { opacity: 0.75 },
                   ]}
                 >
-                  <Text style={[styles.rank, { color: isUnranked ? colors.faint : rankColor(row.rank ?? 0, colors) }]}>
-                    {row.rank !== null ? row.rank : '—'}
-                  </Text>
-                  <Avatar name={row.name} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-                      {row.name} {trend}
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('UserDetail', { id: row.id, category: selectedCategory.slug })}
+                    style={styles.rowMain}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.rank, { color: isUnranked ? colors.faint : rankColor(row.rank ?? 0, colors) }]}>
+                      {row.rank !== null ? row.rank : '—'}
                     </Text>
-                    <Text style={{ color: colors.muted, fontSize: 11 }} numberOfLines={1}>
-                      {[row.age ? `${row.age}y` : null, formatKg(row.weightKg), `×${row.multiplier.toFixed(2)}`].filter(Boolean).join(' · ')}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[styles.score, { color: isUnranked ? colors.muted : colors.text }]}>
-                      {f.value}
-                      {f.suffix ? <Text style={{ color: colors.faint, fontSize: 11 }}> {f.suffix}</Text> : null}
-                    </Text>
-                    <Text style={{ color: colors.muted, fontSize: 11 }} numberOfLines={1}>
-                      {f.detail}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                    <Avatar name={row.name} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+                        {row.name} {trend}
+                      </Text>
+                      <Text style={{ color: colors.muted, fontSize: 11 }} numberOfLines={1}>
+                        {[row.age ? `${row.age}y` : null, formatKg(row.weightKg), `×${row.multiplier.toFixed(2)}`].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', marginRight: 4 }}>
+                      <Text style={[styles.score, { color: isUnranked ? colors.muted : colors.text }]}>
+                        {f.value}
+                        {f.suffix ? <Text style={{ color: colors.faint, fontSize: 11 }}> {f.suffix}</Text> : null}
+                      </Text>
+                      <Text style={{ color: colors.muted, fontSize: 11 }} numberOfLines={1}>
+                        {f.detail}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setLoggingUser(row)}
+                    style={[
+                      styles.quickLogBtn,
+                      { backgroundColor: colors.surface2, borderColor: colors.border },
+                    ]}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 8 }}
+                    accessibilityLabel={`Log result for ${row.name}`}
+                  >
+                    <Text style={[styles.quickLogIcon, { color: colors.accent }]}>+</Text>
+                  </TouchableOpacity>
+                </View>
               );
             })}
           </Panel>
@@ -191,6 +219,15 @@ export function LeaderboardScreen() {
       ) : null}
 
       <UserFormModal visible={addOpen} onClose={() => setAddOpen(false)} onSaved={(u) => navigation.navigate('UserDetail', { id: u.id })} />
+      {loggingUser && data ? (
+        <AttemptFormModal
+          visible
+          user={loggingUser}
+          medianMassKg={data.medianMassKg}
+          initialCategory={selectedCategory}
+          onClose={() => setLoggingUser(null)}
+        />
+      ) : null}
     </ScrollView>
   );
 }
@@ -200,7 +237,33 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700' },
   selectorWrapper: { marginTop: 4, marginBottom: 2 },
   seg: { marginVertical: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 12 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 10,
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingLeft: 12,
+    paddingRight: 6,
+  },
+  quickLogBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickLogIcon: {
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
   rank: { width: 22, fontWeight: '700', fontSize: 14, textAlign: 'center', fontVariant: ['tabular-nums'] },
   name: { fontWeight: '600', fontSize: 15 },
   score: { fontWeight: '700', fontSize: 15, fontVariant: ['tabular-nums'] },

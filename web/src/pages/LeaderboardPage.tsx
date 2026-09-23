@@ -5,9 +5,10 @@ import { useAsync } from '../lib/hooks';
 import { useDataVersion } from '../lib/store';
 import { formatKg, pluralize, reps } from '../lib/format';
 import { Avatar, EmptyState } from '../components/Bits';
-import { TrendDownIcon, TrendUpIcon } from '../components/Icons';
+import { PlusIcon, TrendDownIcon, TrendUpIcon } from '../components/Icons';
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { UserFormModal } from '../components/UserFormModal';
+import { AttemptFormModal } from '../components/AttemptFormModal';
 import type { BoardMode, ExerciseCategory, LeaderRow } from '../types';
 
 const BOARDS: { id: BoardMode; label: string; blurb: string }[] = [
@@ -21,6 +22,7 @@ export function LeaderboardPage() {
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const [mode, setMode] = useState<BoardMode>('best');
   const [addOpen, setAddOpen] = useState(false);
+  const [loggingUser, setLoggingUser] = useState<LeaderRow | null>(null);
   const version = useDataVersion();
   const { data, loading, error } = useAsync(
     () => api.board(mode, selectedCategory?.slug),
@@ -91,7 +93,13 @@ export function LeaderboardPage() {
       ) : data ? (
         <div className="panel fade-in">
           {data.rows.map((row) => (
-            <LeaderboardRow key={row.id} row={row} mode={mode} />
+            <LeaderboardRow
+              key={row.id}
+              row={row}
+              mode={mode}
+              selectedCategory={selectedCategory}
+              onLog={setLoggingUser}
+            />
           ))}
         </div>
       ) : null}
@@ -104,6 +112,15 @@ export function LeaderboardPage() {
       ) : null}
 
       <UserFormModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={(u) => navigate(`/users/${u.id}`)} />
+      {loggingUser && data ? (
+        <AttemptFormModal
+          open
+          user={loggingUser}
+          medianMassKg={data.medianMassKg}
+          category={selectedCategory}
+          onClose={() => setLoggingUser(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -136,7 +153,17 @@ function figures(row: LeaderRow, mode: BoardMode): { value: string; suffix?: str
   }
 }
 
-function LeaderboardRow({ row, mode }: { row: LeaderRow; mode: BoardMode }) {
+function LeaderboardRow({
+  row,
+  mode,
+  selectedCategory,
+  onLog,
+}: {
+  row: LeaderRow;
+  mode: BoardMode;
+  selectedCategory: ExerciseCategory | null;
+  onLog: (row: LeaderRow) => void;
+}) {
   const trend =
     row.trend === 'up' ? (
       <TrendUpIcon size={12} style={{ color: 'var(--up)' }} />
@@ -148,12 +175,16 @@ function LeaderboardRow({ row, mode }: { row: LeaderRow; mode: BoardMode }) {
   const isUnranked = row.rank === null;
 
   return (
-    <Link to={`/users/${row.id}`} className="row row-cols">
+    <div className="row row-cols items-center">
       <span className={`rank ${isUnranked ? 'rank-unranked' : `rank-${row.rank}`}`}>
         {isUnranked ? '—' : row.rank}
       </span>
 
-      <span className="flex min-w-0 items-center gap-2.5">
+      <Link
+        to={`/users/${row.id}${selectedCategory ? `?category=${selectedCategory.slug}` : ''}`}
+        className="flex min-w-0 items-center gap-2.5 no-underline"
+        style={{ color: 'inherit' }}
+      >
         <Avatar name={row.name} />
         <span className="min-w-0">
           <span className="flex items-center gap-1.5">
@@ -166,7 +197,7 @@ function LeaderboardRow({ row, mode }: { row: LeaderRow; mode: BoardMode }) {
               .join(' · ')}
           </span>
         </span>
-      </span>
+      </Link>
 
       <span className="num text-right font-semibold">
         {isUnranked ? '—' : f.value}
@@ -176,7 +207,19 @@ function LeaderboardRow({ row, mode }: { row: LeaderRow; mode: BoardMode }) {
       <span className="row-extra truncate text-right text-xs muted">
         {isUnranked ? 'No attempts yet' : f.detail}
       </span>
-    </Link>
+
+      <span className="flex items-center justify-end">
+        <button
+          type="button"
+          className="btn btn-sm btn-quiet"
+          onClick={() => onLog(row)}
+          title={`Log result for ${row.name}`}
+        >
+          <PlusIcon size={13} />
+          <span className="hidden sm:inline">Log</span>
+        </button>
+      </span>
+    </div>
   );
 }
 

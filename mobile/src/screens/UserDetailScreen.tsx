@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -37,14 +37,22 @@ export function UserDetailScreen() {
     return resolveCategory(params.category);
   });
 
+  const lastParamCategory = useRef(params.category);
   useEffect(() => {
-    if (params.category) {
+    if (params.category && params.category !== lastParamCategory.current) {
+      lastParamCategory.current = params.category;
       const found = db.category(params.category);
-      if (found && found.id !== selectedCategory.id) {
+      if (found) {
         setSelectedCategory(found);
       }
     }
-  }, [params.category, selectedCategory.id]);
+  }, [params.category]);
+
+  const handleSelectCategory = (cat: ExerciseCategory) => {
+    lastParamCategory.current = cat.slug;
+    setSelectedCategory(cat);
+    navigation.setParams({ category: cat.slug });
+  };
 
   const { data, loading, error } = useAsync(
     () =>
@@ -156,7 +164,7 @@ export function UserDetailScreen() {
       <View style={styles.selectorWrapper}>
         <ExerciseSelector
           selected={selectedCategory}
-          onSelect={(cat) => setSelectedCategory(cat)}
+          onSelect={handleSelectCategory}
           size="normal"
         />
       </View>
