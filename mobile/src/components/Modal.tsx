@@ -15,14 +15,21 @@ interface ModalProps {
   title: string;
   subtitle?: string;
   onClose: () => void;
+  onShow?: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }
 
-export function AppModal({ visible, title, subtitle, onClose, children, footer }: ModalProps) {
+export function AppModal({ visible, title, subtitle, onClose, onShow, children, footer }: ModalProps) {
   const { colors } = useTheme();
   return (
-    <RNModal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <RNModal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+      onShow={onShow}
+    >
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>

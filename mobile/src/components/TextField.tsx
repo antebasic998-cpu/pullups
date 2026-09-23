@@ -12,6 +12,7 @@ export function TextField({
   inputRef,
   returnKeyType,
   onSubmitEditing,
+  showSoftInputOnFocus = true,
 }: {
   label: string;
   value: string;
@@ -23,6 +24,7 @@ export function TextField({
   inputRef?: React.Ref<TextInput>;
   returnKeyType?: TextInputProps['returnKeyType'];
   onSubmitEditing?: () => void;
+  showSoftInputOnFocus?: boolean;
 }) {
   const { colors } = useTheme();
   return (
@@ -37,6 +39,7 @@ export function TextField({
         keyboardType={keyboardType}
         multiline={multiline}
         autoFocus={autoFocus}
+        showSoftInputOnFocus={showSoftInputOnFocus}
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}
         style={[

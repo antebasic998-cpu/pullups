@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { InteractionManager, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, ApiError } from '../api';
 import { todayISO } from '../lib/format';
 import { invalidate } from '../lib/store';
@@ -42,22 +42,30 @@ export function AttemptFormModal({
   const repsInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (visible && !wasVisible.current) {
-      setCategory(initialCategory ?? user.category ?? db.defaultCategory());
-      setReps('');
-      setDate(todayISO());
-      setWeight(String(user.weightKg));
-      setNote('');
-      setError(null);
-      setBusy(false);
-
-      const timer = setTimeout(() => {
-        repsInputRef.current?.focus();
-      }, 200);
-      return () => clearTimeout(timer);
+    if (!visible) {
+      wasVisible.current = false;
+      return;
     }
-    wasVisible.current = visible;
+    if (wasVisible.current) return;
+    wasVisible.current = true;
+
+    setCategory(initialCategory ?? user.category ?? db.defaultCategory());
+    setReps('');
+    setDate(todayISO());
+    setWeight(String(user.weightKg));
+    setNote('');
+    setError(null);
+    setBusy(false);
   }, [visible, user, initialCategory]);
+
+  const focusRepsInput = useCallback(() => {
+    const focus = () => repsInputRef.current?.focus();
+    InteractionManager.runAfterInteractions(() => {
+      // Modal slide animation must finish before Android will show the keyboard.
+      const delay = Platform.OS === 'android' ? 400 : 50;
+      setTimeout(focus, delay);
+    });
+  }, []);
 
   const repsNum = Number(reps);
   const weightNum = Number(weight.replace(',', '.'));
@@ -101,6 +109,7 @@ export function AttemptFormModal({
       title={`Log result — ${user.name}`}
       subtitle={`Normalized against office median of ${medianMassKg} kg`}
       onClose={onClose}
+      onShow={focusRepsInput}
       footer={
         <View style={styles.footer}>
           <Button label="Cancel" onPress={onClose} disabled={busy} />
@@ -118,7 +127,6 @@ export function AttemptFormModal({
           <View style={{ flex: 1 }}>
             <TextField
               inputRef={repsInputRef}
-              autoFocus
               label={`${category.name} completed`}
               value={reps}
               onChangeText={(v) => setReps(v.replace(/[^\d]/g, ''))}
