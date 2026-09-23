@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from './src/lib/ThemeContext';
 import { ToastProvider } from './src/components/Toast';
+import { CelebrationProvider } from './src/components/Celebration';
 import { db, initDb, subscribeToRealtime } from './src/core/db';
 import { buildSeedData } from './src/core/seed';
 import { clearAppUnlocked, isAppUnlocked } from './src/lib/auth';
@@ -75,9 +76,11 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <ToastProvider>
-            <Boot>
-              <RootNavigator />
-            </Boot>
+            <CelebrationProvider>
+              <Boot>
+                <RootNavigator />
+              </Boot>
+            </CelebrationProvider>
           </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>

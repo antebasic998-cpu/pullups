@@ -1,5 +1,5 @@
 import { db, syncFromSupabase } from './core/db';
-import { allUsers, leaderboard, meta, office, parseCSV, userDetail } from './core/service';
+import { allUsers, computeGamificationDelta, leaderboard, meta, office, parseCSV, userDetail } from './core/service';
 import { todayISO } from './core/scoring';
 import { randomUUID } from './lib/uuid';
 import { supabase } from './lib/supabase';
@@ -246,6 +246,7 @@ export const api = {
   addAttempt: async (userId: string, input: AttemptInput): Promise<UserResponse> => {
     const user = findUserOr404(userId);
     const cat = db.category(input.categoryId ?? '') ?? db.defaultCategory();
+    const beforeUser = userDetail(user.id, cat.id);
     const reps = requireReps(input.reps);
     const weightKg =
       input.weightKg === undefined || input.weightKg === null || input.weightKg === ''
@@ -287,7 +288,10 @@ export const api = {
       createdAt: sessionRow.created_at,
     });
 
-    return { user: userDetail(user.id, cat.id)! as UserResponse['user'], ...meta(cat.id) };
+    const afterUser = userDetail(user.id, cat.id)! as UserResponse['user'];
+    const celebration = computeGamificationDelta(beforeUser, afterUser, reps, cat.name);
+
+    return { user: afterUser, celebration, ...meta(cat.id) };
   },
 
   deleteAttempt: async (attemptId: string): Promise<{ ok: true }> => {

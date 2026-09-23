@@ -143,12 +143,28 @@ export interface CategoriesResponse extends Meta {
   categories: ExerciseCategory[];
 }
 
+export interface CelebrationData {
+  userName: string;
+  categoryName: string;
+  reps: number;
+  xpGained: number;
+  oldXp: number;
+  newXp: number;
+  oldLevel: Level | null;
+  newLevel: Level | null;
+  leveledUp: boolean;
+  oldProgress: number;
+  newProgress: number;
+  newBadges: Badge[];
+}
+
 export interface UsersResponse extends Meta {
   users: UserSummary[];
 }
 
 export interface UserResponse extends Meta {
   user: UserSummary;
+  celebration?: CelebrationData | null;
 }
 
 export interface ImportResponse extends Meta {

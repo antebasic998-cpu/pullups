@@ -5,6 +5,7 @@ import { todayISO } from '../lib/format';
 import { invalidate } from '../lib/store';
 import { useTheme } from '../lib/ThemeContext';
 import { useToast } from './Toast';
+import { useCelebration } from './Celebration';
 import { AppModal } from './Modal';
 import { Button } from './Button';
 import { TextField } from './TextField';
@@ -26,6 +27,7 @@ export function AttemptFormModal({
   initialCategory?: ExerciseCategory | null;
 }) {
   const toast = useToast();
+  const { celebrate } = useCelebration();
   const { colors } = useTheme();
   const [category, setCategory] = useState<ExerciseCategory>(
     initialCategory ?? user.category ?? db.defaultCategory()
@@ -61,7 +63,7 @@ export function AttemptFormModal({
     if (!reps.trim()) return setError(`How many ${category.name.toLowerCase()}?`);
     setBusy(true);
     try {
-      await api.addAttempt(user.id, {
+      const res = await api.addAttempt(user.id, {
         categoryId: category.id,
         reps,
         date,
@@ -69,8 +71,14 @@ export function AttemptFormModal({
         note: note.trim(),
       });
       invalidate();
-      toast.success(`Logged ${Math.round(Number(reps))} ${category.unit} for ${user.name}.`);
       onClose();
+      if (res.celebration && res.celebration.xpGained > 0) {
+        setTimeout(() => {
+          celebrate(res.celebration!);
+        }, 300);
+      } else {
+        toast.success(`Logged ${Math.round(Number(reps))} ${category.unit} for ${user.name}.`);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save this attempt.');
     } finally {

@@ -354,3 +354,39 @@ export function parseCSV(text) {
   }
   return { rows, errors };
 }
+
+export function computeGamificationDelta(
+  beforeUser: any,
+  afterUser: any,
+  reps: number,
+  categoryName: string,
+) {
+  const oldXp = beforeUser?.xp ?? 0;
+  const newXp = afterUser?.xp ?? 0;
+  const xpGained = Math.max(0, newXp - oldXp);
+
+  const oldLevel = beforeUser?.level ?? null;
+  const newLevel = afterUser?.level ?? null;
+  const leveledUp = Boolean(oldLevel && newLevel && newLevel.level > oldLevel.level);
+
+  const oldProgress = oldLevel ? Number(oldLevel.progress) || 0 : 0;
+  const newProgress = newLevel ? Number(newLevel.progress) || 0 : 0;
+
+  const oldUnlockedIds = new Set((beforeUser?.badges ?? []).filter((b: any) => b.unlocked).map((b: any) => b.id));
+  const newBadges = (afterUser?.badges ?? []).filter((b: any) => b.unlocked && !oldUnlockedIds.has(b.id));
+
+  return {
+    userName: afterUser?.name ?? '',
+    categoryName,
+    reps,
+    xpGained,
+    oldXp,
+    newXp,
+    oldLevel,
+    newLevel,
+    leveledUp,
+    oldProgress,
+    newProgress,
+    newBadges,
+  };
+}
