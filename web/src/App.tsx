@@ -6,6 +6,7 @@ import { AwardsPage } from './pages/AwardsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { UserDetailPage } from './pages/UserDetailPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { PasswordGate } from './components/PasswordGate';
 import { isAppUnlocked } from './lib/auth';
 
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/awards" element={<AwardsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/users/:id" element={<UserDetailPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

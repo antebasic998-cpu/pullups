@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../lib/ThemeContext';
 import { db } from '../core/db';
+import { exerciseEmoji } from '../lib/categoryUtils';
 import type { ExerciseCategory } from '../types';
 
 interface ExerciseSelectorProps {
@@ -11,11 +12,8 @@ interface ExerciseSelectorProps {
   size?: 'compact' | 'normal';
 }
 
-function categoryIcon(slug: string): string {
-  if (slug === 'chin-ups') return '🤸';
-  if (slug === 'dips') return '⚡';
-  if (slug === 'push-ups') return '💥';
-  return '💪';
+function categoryIcon(category: ExerciseCategory): string {
+  return exerciseEmoji(category.iconKey, category.slug);
 }
 
 export function ExerciseSelector({
@@ -47,7 +45,7 @@ export function ExerciseSelector({
         activeOpacity={0.7}
       >
         <Text style={isCompact ? styles.iconCompact : styles.iconNormal}>
-          {categoryIcon(activeCategory.slug)}
+          {categoryIcon(activeCategory)}
         </Text>
         <Text
           style={[
@@ -103,7 +101,7 @@ export function ExerciseSelector({
                       isSelected && { backgroundColor: colors.surface2 },
                     ]}
                   >
-                    <Text style={styles.itemIcon}>{categoryIcon(cat.slug)}</Text>
+                    <Text style={styles.itemIcon}>{categoryIcon(cat)}</Text>
                     <View style={{ flex: 1 }}>
                       <Text
                         style={[

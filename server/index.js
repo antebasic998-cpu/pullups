@@ -12,6 +12,7 @@ import { supabase } from './supabase.js';
 import { allUsers, leaderboard, meta, office, parseCSV, userDetail } from './service.js';
 import { todayISO } from './scoring.js';
 import { DEFAULT_PORT } from './ports.js';
+import { inferCategoryIconKey, slugifyCategoryName } from './categoryUtils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, '..', 'dist');
@@ -77,6 +78,13 @@ function requireDate(raw) {
   return iso;
 }
 
+function requireCategoryName(raw) {
+  const name = String(raw ?? '').trim();
+  if (!name) throw new HttpError(400, 'Exercise name is required.');
+  if (name.length > 80) throw new HttpError(400, 'Exercise name must be 80 characters or fewer.');
+  return name;
+}
+
 const wrap = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
@@ -101,6 +109,65 @@ app.get('/api/health', (_req, res) =>
 );
 
 app.get('/api/categories', (_req, res) => res.json({ categories: db.categories() }));
+
+app.post(
+  '/api/categories',
+  wrap(async (req, res) => {
+    const name = requireCategoryName(req.body?.name);
+    const slug = slugifyCategoryName(name);
+    if (!slug) throw new HttpError(400, 'Exercise name must contain letters or numbers.');
+    if (db.categories().some((c) => c.slug === slug)) {
+      throw new HttpError(409, `${name} already exists on the board.`);
+    }
+
+    const displayOrder = db.categories().reduce((max, c) => Math.max(max, c.displayOrder), 0) + 1;
+    const iconKey = inferCategoryIconKey(slug, name);
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('exercise_categories')
+      .insert({
+        slug,
+        name,
+        short_name: null,
+        description: String(req.body?.description ?? '').slice(0, 200) || null,
+        icon_key: iconKey,
+        unit: 'reps',
+        score_type: 'bodyweight_normalized',
+        normalization_type: 'bodyweight_power',
+        normalization_exponent: 0.67,
+        is_active: true,
+        display_order: displayOrder,
+        created_at: now,
+        updated_at: now,
+      })
+      .select()
+      .single();
+
+    if (error) throw new HttpError(400, error.message);
+
+    await syncFromSupabase();
+
+    const category = {
+      id: data.id,
+      slug: data.slug,
+      name: data.name,
+      shortName: data.short_name,
+      description: data.description ?? '',
+      iconKey: data.icon_key,
+      unit: data.unit,
+      scoreType: data.score_type,
+      normalizationType: data.normalization_type,
+      normalizationExponent: Number(data.normalization_exponent),
+      isActive: data.is_active,
+      displayOrder: data.display_order,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+
+    res.status(201).json({ category });
+  }),
+);
 
 app.get('/api/meta', (req, res) => res.json(meta(req.query.category ?? null)));
 

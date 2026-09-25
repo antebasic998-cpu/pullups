@@ -1,8 +1,10 @@
-import { db, syncFromSupabase } from './core/db';
+import { db, syncFromSupabase, type RawExerciseCategory } from './core/db';
+import { inferCategoryIconKey, slugifyCategoryName } from './lib/categoryUtils';
 import { allUsers, computeGamificationDelta, leaderboard, meta, office, parseCSV, userDetail } from './core/service';
 import { todayISO } from './core/scoring';
 import { randomUUID } from './lib/uuid';
 import { supabase } from './lib/supabase';
+import { invalidate } from './lib/store';
 import type { Database } from './lib/database.types';
 import type { Board, BoardMode, ExerciseCategory, ImportResponse, Meta, OfficeResponse, UserResponse, UsersResponse } from './types';
 
@@ -74,6 +76,37 @@ export interface AttemptInput {
   note?: string;
 }
 
+export interface CategoryInput {
+  name: string;
+  description?: string;
+}
+
+function requireCategoryName(raw: unknown): string {
+  const name = String(raw ?? '').trim();
+  if (!name) throw new ApiError(400, 'Exercise name is required.');
+  if (name.length > 80) throw new ApiError(400, 'Exercise name must be 80 characters or fewer.');
+  return name;
+}
+
+function mapCategoryRow(row: Database['public']['Tables']['exercise_categories']['Row']): RawExerciseCategory {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    shortName: row.short_name,
+    description: row.description ?? '',
+    iconKey: row.icon_key,
+    unit: row.unit,
+    scoreType: row.score_type,
+    normalizationType: row.normalization_type,
+    normalizationExponent: Number(row.normalization_exponent),
+    isActive: row.is_active,
+    displayOrder: row.display_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export const api = {
   sync: async (): Promise<void> => {
     await syncFromSupabase();
@@ -81,6 +114,45 @@ export const api = {
 
   categories: async (): Promise<ExerciseCategory[]> => {
     return db.categories();
+  },
+
+  createCategory: async (input: CategoryInput): Promise<ExerciseCategory> => {
+    const name = requireCategoryName(input.name);
+    const slug = slugifyCategoryName(name);
+    if (!slug) throw new ApiError(400, 'Exercise name must contain letters or numbers.');
+    if (db.categories().some((c) => c.slug === slug)) {
+      throw new ApiError(409, `${name} already exists on the board.`);
+    }
+
+    const displayOrder = db.categories().reduce((max, c) => Math.max(max, c.displayOrder), 0) + 1;
+    const iconKey = inferCategoryIconKey(slug, name);
+    const now = new Date().toISOString();
+
+    const payload = {
+      slug,
+      name,
+      short_name: null,
+      description: String(input.description ?? '').slice(0, 200) || null,
+      icon_key: iconKey,
+      unit: 'reps',
+      score_type: 'bodyweight_normalized',
+      normalization_type: 'bodyweight_power',
+      normalization_exponent: 0.67,
+      is_active: true,
+      display_order: displayOrder,
+      created_at: now,
+      updated_at: now,
+    };
+
+    const { data, error } = await supabase.from('exercise_categories').insert(payload).select().single();
+    if (error) {
+      throw new ApiError(400, error.message);
+    }
+
+    const category = mapCategoryRow(data);
+    db.insertCategory(category);
+    invalidate();
+    return category;
   },
 
   meta: async (categorySlugOrId?: string): Promise<Meta> => {

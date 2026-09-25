@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { exerciseEmoji } from '../lib/categoryUtils';
 import type { ExerciseCategory } from '../types';
 
 interface Props {
@@ -39,7 +40,7 @@ export function ExerciseSelector({ selected, onSelect, compact, loading, initial
     >
       {categories.map((cat) => {
         const isSelected = selected?.id === cat.id || selected?.slug === cat.slug;
-        const icon = cat.slug.includes('chin') ? '🤸' : '💪';
+        const icon = exerciseEmoji(cat.iconKey, cat.slug);
         const showSpinner = isSelected && loading;
         return (
           <button

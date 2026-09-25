@@ -274,6 +274,16 @@ export const db = {
   session(id: string) {
     return ensureLoaded().sessions.find((s) => s.id === id) ?? null;
   },
+  insertCategory(category: RawExerciseCategory) {
+    const data = ensureLoaded();
+    if (data.categories.some((c) => c.id === category.id || c.slug === category.slug)) {
+      return category;
+    }
+    data.categories.push(category);
+    data.categories.sort((a, b) => a.displayOrder - b.displayOrder);
+    schedulePersist();
+    return category;
+  },
   insertUser(user: RawUser) {
     ensureLoaded().users.push(user);
     schedulePersist();

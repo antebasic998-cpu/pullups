@@ -66,8 +66,15 @@ export interface AttemptInput {
   note?: string;
 }
 
+export interface CategoryInput {
+  name: string;
+  description?: string;
+}
+
 export const api = {
   categories: () => request<{ categories: ExerciseCategory[] }>('/categories'),
+  createCategory: (input: CategoryInput) =>
+    request<{ category: ExerciseCategory }>('/categories', { method: 'POST', body: JSON.stringify(input) }),
   meta: (category?: string) => request<Meta>(`/meta${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   board: (mode: BoardMode, category?: string) =>
     request<Board>(`/leaderboard?mode=${mode}${category ? `&category=${encodeURIComponent(category)}` : ''}`),

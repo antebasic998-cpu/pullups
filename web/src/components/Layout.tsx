@@ -34,6 +34,9 @@ export function Layout() {
             <NavTab to="/users" active={pathname.startsWith('/users')}>
               Athletes
             </NavTab>
+            <NavTab to="/settings" active={pathname.startsWith('/settings')}>
+              Settings
+            </NavTab>
           </nav>
 
           <div className="ml-auto flex items-center gap-1.5">
