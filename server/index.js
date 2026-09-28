@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { db, syncFromSupabase } from './store.js';
 import { supabase } from './supabase.js';
-import { allUsers, leaderboard, meta, office, parseCSV, userDetail } from './service.js';
+import { allUsers, computeGamificationDelta, leaderboard, meta, office, parseCSV, userDetail } from './service.js';
 import { todayISO } from './scoring.js';
 import { DEFAULT_PORT } from './ports.js';
 import { inferCategoryIconKey, slugifyCategoryName } from './categoryUtils.js';
@@ -291,6 +291,7 @@ app.post(
   wrap(async (req, res) => {
     const user = findUserOr404(req.params.id);
     const cat = db.category(req.body?.categoryId ?? '') ?? db.defaultCategory();
+    const beforeUser = userDetail(user.id, cat.id);
     const reps = requireReps(req.body?.reps);
     const weightKg =
       req.body?.weightKg === undefined || req.body?.weightKg === null || req.body?.weightKg === ''
@@ -316,7 +317,9 @@ app.post(
 
     db.invalidate();
     await syncFromSupabase();
-    res.status(201).json({ user: userDetail(user.id, cat.id), ...meta(cat.id) });
+    const afterUser = userDetail(user.id, cat.id);
+    const celebration = computeGamificationDelta(beforeUser, afterUser, reps, cat.name);
+    res.status(201).json({ user: afterUser, celebration, ...meta(cat.id) });
   }),
 );
 

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api';
 import { Modal } from './Modal';
 import { useToast } from './Toast';
+import { useCelebration } from './Celebration';
+import { useSettings } from '../lib/SettingsContext';
 import { ExerciseSelector } from './ExerciseSelector';
 import { invalidate } from '../lib/store';
 import { todayISO } from '../lib/format';
@@ -20,6 +22,8 @@ interface Props {
  *  (or cutting) phase does not retroactively change old scores. */
 export function AttemptFormModal({ open, onClose, user, medianMassKg, category, onSaved }: Props) {
   const toast = useToast();
+  const { celebrate } = useCelebration();
+  const { celebrationsEnabled } = useSettings();
   const [activeCategory, setActiveCategory] = useState<ExerciseCategory | null>(category ?? null);
   const [reps, setReps] = useState('');
   const [date, setDate] = useState(todayISO());
@@ -56,7 +60,7 @@ export function AttemptFormModal({ open, onClose, user, medianMassKg, category, 
     if (!reps.trim()) return setError(`How many ${exerciseName.toLowerCase()}?`);
     setBusy(true);
     try {
-      await api.addAttempt(user.id, {
+      const res = await api.addAttempt(user.id, {
         categoryId: activeCategory?.id ?? category?.id,
         reps,
         date,
@@ -64,9 +68,15 @@ export function AttemptFormModal({ open, onClose, user, medianMassKg, category, 
         note: note.trim(),
       });
       invalidate();
-      toast.success(`Logged ${Math.round(Number(reps))} ${exerciseName.toLowerCase()} for ${user.name}.`);
       onSaved?.();
       onClose();
+      if (res.celebration && res.celebration.xpGained > 0 && celebrationsEnabled) {
+        window.setTimeout(() => {
+          celebrate(res.celebration!);
+        }, 280);
+      } else {
+        toast.success(`Logged ${Math.round(Number(reps))} ${exerciseName.toLowerCase()} for ${user.name}.`);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save this attempt.');
     } finally {
