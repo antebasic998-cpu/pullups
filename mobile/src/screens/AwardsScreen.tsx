@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,7 +9,8 @@ import { formatDate, pluralize } from '../lib/format';
 import { useDataVersion } from '../lib/store';
 import { useTheme } from '../lib/ThemeContext';
 import { tierColor } from '../lib/theme';
-import type { Award } from '../types';
+import { ExerciseSelector } from '../components/ExerciseSelector';
+import type { Award, ExerciseCategory } from '../types';
 import type { RootStackParamList } from '../navigation/types';
 
 function AwardCard({ award }: { award: Award }) {
@@ -50,16 +52,24 @@ export function AwardsScreen() {
   const version = useDataVersion();
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { data, loading, error } = useAsync(() => api.office(), [version]);
+  const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
+  const { data, loading, error } = useAsync(
+    () => api.office(selectedCategory?.slug),
+    [version, selectedCategory?.slug],
+  );
+  const exerciseLabel = data?.category?.name ?? selectedCategory?.name ?? 'this exercise';
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: colors.text }]}>Office awards</Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.title, { color: colors.text }]}>Office awards</Text>
+        <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} size="compact" />
+      </View>
       <Muted>
         {data && data.userCount > 0 ? (
           <>
-            Week of {formatDate(data.week.start)} to {formatDate(data.week.end)} · {data.participants} of{' '}
-            {pluralize(data.userCount, 'athlete')} logged a result
+            {exerciseLabel} · week of {formatDate(data.week.start)} to {formatDate(data.week.end)} ·{' '}
+            {data.participants} of {pluralize(data.userCount, 'athlete')} logged a result
           </>
         ) : data ? (
           'Add athletes to start handing out prizes'
@@ -216,6 +226,7 @@ export function AwardsScreen() {
 
 const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 32, gap: 10 },
+  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   title: { fontSize: 22, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   award: { width: '48%', borderWidth: 1, borderRadius: 12, padding: 12, gap: 6 },

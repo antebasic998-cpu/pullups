@@ -177,7 +177,10 @@ app.get('/api/leaderboard', (req, res) => {
   res.json({ ...leaderboard(category, mode), ...meta(category) });
 });
 
-app.get('/api/office', (_req, res) => res.json({ ...office(), ...meta() }));
+app.get('/api/office', (req, res) => {
+  const category = req.query.category ?? null;
+  res.json({ ...office(category), ...meta(category ?? undefined) });
+});
 
 app.get('/api/users', (req, res) => {
   const category = req.query.category ?? null;

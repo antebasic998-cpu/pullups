@@ -163,8 +163,8 @@ export const api = {
     return { ...leaderboard(categorySlugOrId, mode), ...meta(categorySlugOrId) } as Board;
   },
 
-  office: async (): Promise<OfficeResponse> => {
-    return { ...office(), ...meta() } as OfficeResponse;
+  office: async (categorySlugOrId?: string): Promise<OfficeResponse> => {
+    return { ...office(categorySlugOrId), ...meta(categorySlugOrId) } as OfficeResponse;
   },
 
   users: async (categorySlugOrId?: string): Promise<UsersResponse> => {

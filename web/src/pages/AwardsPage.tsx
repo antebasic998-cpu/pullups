@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAsync } from '../lib/hooks';
 import { useDataVersion } from '../lib/store';
 import { formatDate, pluralize } from '../lib/format';
 import { Avatar, EmptyState } from '../components/Bits';
+import { ExerciseSelector } from '../components/ExerciseSelector';
 import { FlameIcon, InfoIcon, TrophyIcon } from '../components/Icons';
-import type { Award } from '../types';
+import type { Award, ExerciseCategory } from '../types';
 
 const TIER_COLOR: Record<string, string> = {
   bronze: 'var(--bronze)',
@@ -16,17 +18,30 @@ const TIER_COLOR: Record<string, string> = {
 
 export function AwardsPage() {
   const version = useDataVersion();
-  const { data, loading, error } = useAsync(() => api.office(), [version]);
+  const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
+  const { data, loading, error } = useAsync(
+    () => api.office(selectedCategory?.slug),
+    [version, selectedCategory?.slug],
+  );
+  const exerciseLabel = data?.category?.name ?? selectedCategory?.name ?? 'this exercise';
 
   return (
     <div className="shell">
       <header className="mb-5">
-        <h1 className="m-0 text-xl font-semibold tracking-tight">Office awards</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="m-0 text-xl font-semibold tracking-tight">Office awards</h1>
+          <ExerciseSelector
+            selected={selectedCategory}
+            onSelect={setSelectedCategory}
+            loading={loading}
+            compact
+          />
+        </div>
         <p className="m-0 mt-1 text-sm muted">
           {data && data.userCount > 0 ? (
             <>
-              Week of {formatDate(data.week.start)} to {formatDate(data.week.end)} · {data.participants} of{' '}
-              {pluralize(data.userCount, 'athlete')} logged a result
+              {exerciseLabel} · week of {formatDate(data.week.start)} to {formatDate(data.week.end)} ·{' '}
+              {data.participants} of {pluralize(data.userCount, 'athlete')} logged a result
             </>
           ) : data ? (
             'Add athletes to start handing out prizes'

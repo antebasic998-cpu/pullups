@@ -59,6 +59,7 @@ export interface Award {
 }
 
 export interface OfficeResponse extends Meta {
+  category?: ExerciseCategory;
   week: { start: string; end: string };
   participants: number;
   awards: Award[];

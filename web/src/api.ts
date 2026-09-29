@@ -78,7 +78,8 @@ export const api = {
   meta: (category?: string) => request<Meta>(`/meta${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   board: (mode: BoardMode, category?: string) =>
     request<Board>(`/leaderboard?mode=${mode}${category ? `&category=${encodeURIComponent(category)}` : ''}`),
-  office: () => request<OfficeResponse>('/office'),
+  office: (category?: string) =>
+    request<OfficeResponse>(`/office${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   users: (category?: string) =>
     request<UsersResponse>(`/users${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   user: (id: string, category?: string) =>

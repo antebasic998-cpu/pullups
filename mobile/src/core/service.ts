@@ -65,8 +65,10 @@ export function decorateSession(session, user, medianKg, category = null) {
 }
 
 /** Replay the whole office: XP, levels, badges, streaks and daily ranks. */
-export function game(medianKg = medianMass()) {
-  return buildGame({ users: db.users(), sessions: db.sessions(), medianMassKg: medianKg });
+export function game(medianKg = medianMass(), categorySlugOrId?: string | null) {
+  const cat = resolveCategory(categorySlugOrId);
+  const sessions = db.sessionsOfCategory(cat.id);
+  return buildGame({ users: db.users(), sessions, medianMassKg: medianKg });
 }
 
 /** Public user shape + personal bests + form trend + game state (category-scoped). */
@@ -139,7 +141,7 @@ export function buildUserView(user, medianKg, category = null, existingGame = nu
 export function allUsers(categorySlugOrId?: string | null) {
   const cat = resolveCategory(categorySlugOrId);
   const medianKg = medianMass();
-  const g = game(medianKg);
+  const g = game(medianKg, cat);
   return db
     .users()
     .map((u) => buildUserView(u, medianKg, cat, g))
@@ -151,7 +153,7 @@ export function userDetail(id: string, categorySlugOrId?: string | null) {
   if (!user) return null;
   const cat = resolveCategory(categorySlugOrId);
   const medianKg = medianMass();
-  return buildUserView(user, medianKg, cat, game(medianKg));
+  return buildUserView(user, medianKg, cat, game(medianKg, cat));
 }
 
 /**
@@ -175,7 +177,7 @@ export function leaderboard(categorySlugOrId?: string | null, mode = 'best') {
   const cat = resolveCategory(categorySlugOrId);
   const requested = BOARDS.includes(mode) ? mode : 'best';
   const medianKg = medianMass();
-  const g = game(medianKg);
+  const g = game(medianKg, cat);
   const allRows = db.users().map((u) => buildUserView(u, medianKg, cat, g));
 
   // Separate athletes with attempts from unranked athletes
@@ -226,17 +228,19 @@ export function leaderboard(categorySlugOrId?: string | null, mode = 'best') {
 }
 
 /** Everything the Awards page needs: this week's prizes, XP race, badge wall. */
-export function office() {
+export function office(categorySlugOrId?: string | null) {
+  const cat = resolveCategory(categorySlugOrId);
   const medianKg = medianMass();
-  const g = game(medianKg);
+  const g = game(medianKg, cat);
   const users = db.users();
   const awards = officeAwards(g, users);
-  const athletes = allUsers();
+  const athletes = allUsers(cat);
 
   return {
+    category: cat,
     medianMassKg: medianKg,
     userCount: users.length,
-    attemptCount: db.sessions().length,
+    attemptCount: db.sessionsOfCategory(cat.id).length,
     week: awards.week,
     participants: awards.participants,
     awards: awards.awards,
