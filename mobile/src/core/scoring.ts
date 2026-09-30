@@ -52,6 +52,13 @@ export function medianMassOf(users) {
   return round(median(users.map((u) => Number(u.weightKg))), 2);
 }
 
+/** Office median captured on the attempt; falls back to live median for legacy rows. */
+export function medianForAttempt(session: { medianMassKg?: number | null }, liveMedianKg: number) {
+  const snapshot = Number(session?.medianMassKg);
+  if (Number.isFinite(snapshot) && snapshot > 0) return snapshot;
+  return liveMedianKg;
+}
+
 /** Hours-free ISO date (YYYY-MM-DD) for a stored timestamp. */
 export function todayISO() {
   const d = new Date();

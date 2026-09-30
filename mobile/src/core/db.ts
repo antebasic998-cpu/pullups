@@ -40,6 +40,7 @@ export interface RawSession {
   exerciseCategoryId: string;
   reps: number;
   weightKg: number;
+  medianMassKg: number | null;
   date: string;
   note: string;
   createdAt: string;
@@ -140,6 +141,7 @@ export async function syncFromSupabase(): Promise<DbData> {
           exerciseCategoryId: s.exercise_category_id ?? defaultCatId,
           reps: Number(s.reps),
           weightKg: Number(s.weight_kg),
+          medianMassKg: s.median_mass_kg != null ? Number(s.median_mass_kg) : null,
           date: s.date,
           note: s.note ?? '',
           createdAt: s.created_at,

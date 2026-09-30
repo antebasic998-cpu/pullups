@@ -67,7 +67,7 @@ export function UserFormModal({ open, onClose, user, onSaved }: Props) {
       title={editing ? `Edit ${user?.name}` : 'Add an athlete'}
       subtitle={
         editing
-          ? 'Changing bodyweight re-scores every result in normalized mode.'
+          ? 'Bodyweight on your profile is used for new logs only — past results keep the weight from that day.'
           : 'Name, age and bodyweight are all the board needs to score fairly.'
       }
       footer={

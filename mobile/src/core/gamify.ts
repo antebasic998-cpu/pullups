@@ -11,7 +11,7 @@
  * Sessions are replayed in chronological order, so every award and bonus is
  * judged against the board as it stood on that day – not against today's board.
  */
-import { normalizedScore, round } from './scoring';
+import { medianForAttempt, normalizedScore, round } from './scoring';
 
 /* ------------------------------------------------------------------ *
  * Tuning
@@ -297,7 +297,7 @@ export function buildGame({ users, sessions, medianMassKg }) {
     const user = entry.user;
     const reps = Number(session.reps);
     const mass = massOf(session, user);
-    const normalized = normalizedScore(reps, mass, medianMassKg);
+    const normalized = normalizedScore(reps, mass, medianForAttempt(session, medianMassKg));
     const date = dayKey(session.date);
     const week = mondayOf(date);
     const pbBefore = entry.pbReps;

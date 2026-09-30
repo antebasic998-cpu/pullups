@@ -80,6 +80,7 @@ export async function syncFromSupabase() {
           exerciseCategoryId: s.exercise_category_id ?? defaultCatId,
           reps: Number(s.reps),
           weightKg: Number(s.weight_kg),
+          medianMassKg: s.median_mass_kg != null ? Number(s.median_mass_kg) : null,
           date: s.date,
           note: s.note ?? '',
           createdAt: s.created_at,

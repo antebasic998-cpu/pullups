@@ -76,6 +76,7 @@ export interface Attempt {
   exerciseCategoryId?: string;
   reps: number;
   weightKg: number;
+  medianMassKg?: number;
   date: string;
   note: string;
   createdAt: string;

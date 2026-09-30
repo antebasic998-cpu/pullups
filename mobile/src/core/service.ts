@@ -5,7 +5,15 @@
  * colleague (which moves the office median) instantly re-rates everybody.
  */
 import { db } from './db';
-import { EXPONENT, massMultiplier, medianMassOf, normalizedScore, round, todayISO } from './scoring';
+import {
+  EXPONENT,
+  massMultiplier,
+  medianForAttempt,
+  medianMassOf,
+  normalizedScore,
+  round,
+  todayISO,
+} from './scoring';
 import { BADGES, LEVELS, XP_RULES, buildGame, officeAwards } from './gamify';
 
 /** Leaderboards the app can show. */
@@ -50,17 +58,19 @@ export function decorateSession(session, user, medianKg, category = null) {
   const weightKg = massOf(session, user);
   const reps = Number(session.reps);
   const exponent = cat?.normalizationExponent ?? EXPONENT;
+  const scoringMedian = medianForAttempt(session, medianKg);
   return {
     id: session.id,
     userId: session.userId,
     exerciseCategoryId: session.exerciseCategoryId ?? cat.id,
     reps,
     weightKg: round(weightKg, 1),
+    medianMassKg: round(scoringMedian, 2),
     date: session.date,
     note: session.note ?? '',
     createdAt: session.createdAt,
-    normalized: normalizedScore(reps, weightKg, medianKg, exponent),
-    multiplier: massMultiplier(weightKg, medianKg, exponent),
+    normalized: normalizedScore(reps, weightKg, scoringMedian, exponent),
+    multiplier: massMultiplier(weightKg, scoringMedian, exponent),
   };
 }
 

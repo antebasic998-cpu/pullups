@@ -1,6 +1,15 @@
 import { db, syncFromSupabase, type RawExerciseCategory } from './core/db';
 import { inferCategoryIconKey, slugifyCategoryName } from './lib/categoryUtils';
-import { allUsers, computeGamificationDelta, leaderboard, meta, office, parseCSV, userDetail } from './core/service';
+import {
+  allUsers,
+  computeGamificationDelta,
+  leaderboard,
+  medianMass,
+  meta,
+  office,
+  parseCSV,
+  userDetail,
+} from './core/service';
 import { todayISO } from './core/scoring';
 import { randomUUID } from './lib/uuid';
 import { supabase } from './lib/supabase';
@@ -221,12 +230,14 @@ export const api = {
     db.insertUser(user);
 
     if (seedReps !== null) {
+      const medianSnapshot = medianMass();
       const sessionPayload = {
         id: randomUUID(),
         user_id: user.id,
         exercise_category_id: defaultCat.id,
         reps: seedReps,
         weight_kg: user.weightKg,
+        median_mass_kg: medianSnapshot,
         date: seedDate!,
         note: 'Personal best on joining',
         created_at: now,
@@ -246,6 +257,8 @@ export const api = {
           exerciseCategoryId: sessionRow.exercise_category_id,
           reps: sessionRow.reps,
           weightKg: Number(sessionRow.weight_kg),
+          medianMassKg:
+            sessionRow.median_mass_kg != null ? Number(sessionRow.median_mass_kg) : medianSnapshot,
           date: sessionRow.date,
           note: sessionRow.note,
           createdAt: sessionRow.created_at,
@@ -327,6 +340,7 @@ export const api = {
     const date = requireDate(input.date);
     const note = String(input.note ?? '').slice(0, 200);
     const now = new Date().toISOString();
+    const medianSnapshot = medianMass();
 
     const sessionPayload = {
       id: randomUUID(),
@@ -334,6 +348,7 @@ export const api = {
       exercise_category_id: cat.id,
       reps,
       weight_kg: weightKg,
+      median_mass_kg: medianSnapshot,
       date,
       note,
       created_at: now,
@@ -355,6 +370,8 @@ export const api = {
       exerciseCategoryId: sessionRow.exercise_category_id,
       reps: sessionRow.reps,
       weightKg: Number(sessionRow.weight_kg),
+      medianMassKg:
+        sessionRow.median_mass_kg != null ? Number(sessionRow.median_mass_kg) : medianSnapshot,
       date: sessionRow.date,
       note: sessionRow.note,
       createdAt: sessionRow.created_at,
@@ -388,12 +405,14 @@ export const api = {
       throw new ApiError(400, 'Nothing to import – the file was empty.');
     }
     const now = new Date().toISOString();
+    const medianSnapshot = medianMass();
     const sessionsToInsert = rows.map((row: { reps: number; date: string; weight: number | null; note: string }) => ({
       id: randomUUID(),
       user_id: user.id,
       exercise_category_id: cat.id,
       reps: row.reps,
       weight_kg: row.weight ?? Number(user.weightKg),
+      median_mass_kg: medianSnapshot,
       date: row.date,
       note: row.note ?? '',
       created_at: now,
@@ -411,6 +430,7 @@ export const api = {
         exerciseCategoryId: s.exercise_category_id,
         reps: s.reps,
         weightKg: s.weight_kg,
+        medianMassKg: medianSnapshot,
         date: s.date,
         note: s.note,
         createdAt: s.created_at,

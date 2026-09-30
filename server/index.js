@@ -9,7 +9,16 @@ import { fileURLToPath } from 'node:url';
 
 import { db, syncFromSupabase } from './store.js';
 import { supabase } from './supabase.js';
-import { allUsers, computeGamificationDelta, leaderboard, meta, office, parseCSV, userDetail } from './service.js';
+import {
+  allUsers,
+  computeGamificationDelta,
+  leaderboard,
+  medianMass,
+  meta,
+  office,
+  parseCSV,
+  userDetail,
+} from './service.js';
 import { todayISO } from './scoring.js';
 import { DEFAULT_PORT } from './ports.js';
 import { inferCategoryIconKey, slugifyCategoryName } from './categoryUtils.js';
@@ -221,12 +230,14 @@ app.post(
     if (uErr) throw new HttpError(400, uErr.message);
 
     if (seedReps !== null) {
+      const medianSnapshot = medianMass();
       const sessionPayload = {
         id: randomUUID(),
         user_id: userRow.id,
         exercise_category_id: defaultCat.id,
         reps: seedReps,
         weight_kg: Number(userRow.weight_kg),
+        median_mass_kg: medianSnapshot,
         date: seedDate,
         note: 'Personal best on joining',
         created_at: now,
@@ -303,6 +314,7 @@ app.post(
     const date = requireDate(req.body?.date);
     const note = String(req.body?.note ?? '').slice(0, 200);
     const now = new Date().toISOString();
+    const medianSnapshot = medianMass();
 
     const sessionPayload = {
       id: randomUUID(),
@@ -310,6 +322,7 @@ app.post(
       exercise_category_id: cat.id,
       reps,
       weight_kg: weightKg,
+      median_mass_kg: medianSnapshot,
       date,
       note,
       created_at: now,
@@ -345,6 +358,7 @@ app.post(
     const { rows, errors } = parseCSV(req.body?.csv ?? '');
     if (rows.length === 0 && errors.length === 0) throw new HttpError(400, 'Nothing to import – the file was empty.');
     const now = new Date().toISOString();
+    const medianSnapshot = medianMass();
 
     const sessionsToInsert = rows.map((row) => ({
       id: randomUUID(),
@@ -352,6 +366,7 @@ app.post(
       exercise_category_id: cat.id,
       reps: row.reps,
       weight_kg: row.weight ?? Number(user.weightKg),
+      median_mass_kg: medianSnapshot,
       date: row.date,
       note: row.note ?? '',
       created_at: now,

@@ -95,6 +95,7 @@ export type Database = {
           date: string
           exercise_category_id: string
           id: string
+          median_mass_kg: number | null
           note: string
           reps: number
           user_id: string
@@ -105,6 +106,7 @@ export type Database = {
           date: string
           exercise_category_id: string
           id?: string
+          median_mass_kg?: number | null
           note?: string
           reps: number
           user_id: string
@@ -115,6 +117,7 @@ export type Database = {
           date?: string
           exercise_category_id?: string
           id?: string
+          median_mass_kg?: number | null
           note?: string
           reps?: number
           user_id?: string
