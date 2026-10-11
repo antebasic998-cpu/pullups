@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { api } from '../api';
 import { db } from '../core/db';
 import { resolveCategory } from '../core/service';
+import { FlightAvatar, FlightContext, useBoardFlight } from '../components/AvatarFlight';
 import { Avatar, EmptyState, PageHeader, Panel, Skeleton } from '../components/Bits';
 import { Button } from '../components/Button';
 import { ExerciseSelector } from '../components/ExerciseSelector';
@@ -14,7 +15,6 @@ import { Screen } from '../components/Screen';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { UserFormModal } from '../components/UserFormModal';
 import { useAsync } from '../lib/hooks';
-import { useFadeSwap } from '../lib/useFadeSwap';
 import { formatKg, formatWeekRange, pluralize, reps } from '../lib/format';
 import { useLogSheet } from '../lib/LogSheet';
 import { useDataVersion } from '../lib/store';
@@ -89,16 +89,18 @@ export function LeaderboardScreen() {
   // one loads, the previous board stays visible (dimmed) and then cross-fades to the new one, so switching never
   // flashes a skeleton or shows one mode's rows under another mode's numbers.
   const boardKey = `${selectedCategory.slug}|${mode}`;
-  const { data: fetched, error } = useAsync(
-    async () => ({
+  const { data: fetched, error } = useAsync(async () => {
+    const board = await api.board(selectedCategory.slug, mode);
+    return {
       key: boardKey,
+      // Fingerprint of who stands where: a new result that moves someone up animates, a plain refresh doesn't.
+      sig: board.rows.map((r) => `${r.id}:${r.rank ?? '-'}`).join('|'),
       mode,
-      board: await api.board(selectedCategory.slug, mode),
+      board,
       office: await api.office(selectedCategory.slug),
-    }),
-    [boardKey, version],
-  );
-  const { shown, style: fadeStyle } = useFadeSwap(fetched, boardKey);
+    };
+  }, [boardKey, version]);
+  const { shown, outerRef, contentStyle, overlay, flightApi } = useBoardFlight(fetched, boardKey);
   const data = shown?.board ?? null;
   const office = shown?.office ?? null;
   const shownMode: BoardMode = shown?.mode ?? mode;
@@ -138,76 +140,81 @@ export function LeaderboardScreen() {
       {!shown && !error ? (
         <BoardSkeleton />
       ) : shown ? (
-        <Animated.View style={fadeStyle}>
-          <Text style={[styles.blurb, { color: colors.muted }]}>
-            {board.blurb}
-            {data && data.userCount > 0
-              ? ` · median ${formatKg(data.medianMassKg)} · ${pluralize(data.userCount, 'athlete')}`
-              : data
-                ? ' · nobody on the board yet'
-                : ''}
-          </Text>
+        <FlightContext.Provider value={flightApi}>
+          <View ref={outerRef} collapsable={false}>
+            <Animated.View style={contentStyle}>
+              <Text style={[styles.blurb, { color: colors.muted }]}>
+                {board.blurb}
+                {data && data.userCount > 0
+                  ? ` · median ${formatKg(data.medianMassKg)} · ${pluralize(data.userCount, 'athlete')}`
+                  : data
+                    ? ' · nobody on the board yet'
+                    : ''}
+              </Text>
 
-          {data && rows.length === 0 ? (
-            <View style={{ marginTop: 20 }}>
-              <EmptyState
-                title="No athletes yet"
-                message="Add a colleague with their name, age and bodyweight. The office median — and everyone's normalized score — is worked out from the roster automatically."
-                action={<Button label="Add athlete" variant="primary" onPress={() => setAddOpen(true)} style={{ marginTop: 8 }} />}
-              />
-            </View>
-          ) : data ? (
-            <View>
-              {hasRanked ? (
-                <View style={styles.podium}>
-                  {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={shownMode} onPress={openProfile} onLog={quickLog} /> : null}
-                  <PodiumColumn row={top[0]} pos={1} mode={shownMode} onPress={openProfile} onLog={quickLog} solo={top.length === 1} />
-                  {top.length >= 3 ? (
-                    <PodiumColumn row={top[2]} pos={3} mode={shownMode} onPress={openProfile} onLog={quickLog} />
-                  ) : top.length === 2 ? (
-                    <View style={{ flex: 1 }} />
+              {data && rows.length === 0 ? (
+                <View style={{ marginTop: 20 }}>
+                  <EmptyState
+                    title="No athletes yet"
+                    message="Add a colleague with their name, age and bodyweight. The office median — and everyone's normalized score — is worked out from the roster automatically."
+                    action={<Button label="Add athlete" variant="primary" onPress={() => setAddOpen(true)} style={{ marginTop: 8 }} />}
+                  />
+                </View>
+              ) : data ? (
+                <View>
+                  {hasRanked ? (
+                    <View style={styles.podium}>
+                      {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={shownMode} onPress={openProfile} onLog={quickLog} /> : null}
+                      <PodiumColumn row={top[0]} pos={1} mode={shownMode} onPress={openProfile} onLog={quickLog} solo={top.length === 1} />
+                      {top.length >= 3 ? (
+                        <PodiumColumn row={top[2]} pos={3} mode={shownMode} onPress={openProfile} onLog={quickLog} />
+                      ) : top.length === 2 ? (
+                        <View style={{ flex: 1 }} />
+                      ) : null}
+                    </View>
+                  ) : (
+                    <View style={[styles.notice, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
+                      <Text style={{ fontSize: 22 }}>🤸</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.noticeTitle, { color: colors.text }]}>No results logged for {exerciseName} yet</Text>
+                        <Text style={[styles.noticeSub, { color: colors.muted }]}>
+                          Tap + next to an athlete to log the first score.
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {rest.length > 0 ? (
+                    <Panel style={hasRanked ? undefined : { marginTop: 14 }}>
+                      {rest.map((row, i) => (
+                        <LeaderboardRow
+                          key={row.id}
+                          row={row}
+                          mode={shownMode}
+                          first={i === 0}
+                          onOpen={openProfile}
+                          onLog={quickLog}
+                        />
+                      ))}
+                    </Panel>
                   ) : null}
-                </View>
-              ) : (
-                <View style={[styles.notice, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
-                  <Text style={{ fontSize: 22 }}>🤸</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.noticeTitle, { color: colors.text }]}>No results logged for {exerciseName} yet</Text>
-                    <Text style={[styles.noticeSub, { color: colors.muted }]}>
-                      Tap + next to an athlete to log the first score.
-                    </Text>
-                  </View>
-                </View>
-              )}
 
-              {rest.length > 0 ? (
-                <Panel style={hasRanked ? undefined : { marginTop: 14 }}>
-                  {rest.map((row, i) => (
-                    <LeaderboardRow
-                      key={row.id}
-                      row={row}
-                      mode={shownMode}
-                      first={i === 0}
-                      onOpen={openProfile}
-                      onLog={quickLog}
-                    />
-                  ))}
-                </Panel>
+                  {office && data.userCount > 0 ? <WeekCard office={office} athletes={rows} /> : null}
+                </View>
               ) : null}
 
-              {office && data.userCount > 0 ? <WeekCard office={office} athletes={rows} /> : null}
-            </View>
-          ) : null}
+              {shownMode === 'improved' && data ? (
+                <Text style={[styles.foot, { color: colors.faint }]}>
+                  Improvement is measured from an athlete's first recorded result to their best score, so one bad day
+                  doesn't erase progress. It appears once someone has logged two results.
+                </Text>
+              ) : null}
 
-          {shownMode === 'improved' && data ? (
-            <Text style={[styles.foot, { color: colors.faint }]}>
-              Improvement is measured from an athlete's first recorded result to their best score, so one bad day
-              doesn't erase progress. It appears once someone has logged two results.
-            </Text>
-          ) : null}
-
-          <Text style={[styles.foot, { color: colors.faint }]}>score = {exerciseName.toLowerCase()} × (bodyweight ÷ office median) ^ 0.67</Text>
-        </Animated.View>
+              <Text style={[styles.foot, { color: colors.faint }]}>score = {exerciseName.toLowerCase()} × (bodyweight ÷ office median) ^ 0.67</Text>
+            </Animated.View>
+            {overlay}
+          </View>
+        </FlightContext.Provider>
       ) : null}
 
       <UserFormModal
@@ -263,7 +270,7 @@ function PodiumColumn({
           ]}
         >
           <View style={{ borderWidth: 3, borderColor: colors.bg, borderRadius: size / 2, overflow: 'hidden' }}>
-            <Avatar name={row.name} userId={row.id} size={size - 6} />
+            <FlightAvatar name={row.name} userId={row.id} size={size - 6} />
           </View>
         </View>
         <TouchableOpacity
@@ -326,7 +333,7 @@ function LeaderboardRow({
         <Text style={[styles.rk, { color: isUnranked ? colors.faint : rankColor(row.rank ?? 0, colors) }]}>
           {isUnranked ? '—' : row.rank}
         </Text>
-        <Avatar name={row.name} userId={row.id} size={40} />
+        <FlightAvatar name={row.name} userId={row.id} size={40} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.whoLine}>
             <Text style={[styles.who, { color: colors.text }]} numberOfLines={1}>
