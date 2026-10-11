@@ -82,7 +82,7 @@ export function AwardsPage() {
             ) : (
               data.xpThisWeek.map((row) => (
                 <Link key={row.userId} to={`/users/${row.userId}`} className="xr">
-                  <Avatar name={row.name} size={36} />
+                  <Avatar name={row.name} userId={row.userId} size={36} />
                   <div className="m">
                     <b>{firstName(row.name)}</b>
                     <div className="tr">
@@ -106,7 +106,7 @@ export function AwardsPage() {
             ) : (
               data.leaderboard.map((row) => (
                 <Link key={row.id} to={`/users/${row.id}`} className="xr">
-                  <Avatar name={row.name} size={36} />
+                  <Avatar name={row.name} userId={row.id} size={36} />
                   <div className="m">
                     <b>{row.name}</b> <span>· {row.level.title}</span>
                     <div className="tr gold">
@@ -211,7 +211,7 @@ function AwardCard({ award }: { award: Award }) {
       </span>
       <h4>{award.title}</h4>
       <Link to={`/users/${w.userId}`} className="w">
-        <Avatar name={w.name} size={30} />
+        <Avatar name={w.name} userId={w.userId} size={30} />
         <div>
           <b>{firstName(w.name)}</b>
           <small>{w.detail}</small>

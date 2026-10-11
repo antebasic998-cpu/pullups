@@ -27,10 +27,20 @@ export function LeaderboardPage() {
   const version = useDataVersion();
   const log = useLogSheet();
   const navigate = useNavigate();
-  const { data, loading, error } = useAsync(
-    () => api.board(mode, selectedCategory?.slug),
-    [mode, selectedCategory?.slug, version],
-  );
+  // The board is tagged with the mode/exercise it was fetched for. Until the response for the current
+  // selection arrives we show the skeleton instead of the last selection's rows (which would be re-labelled
+  // with the new mode's numbers while still sitting in the old order).
+  const boardKey = `${mode}|${selectedCategory?.slug ?? ''}`;
+  const {
+    data: fetched,
+    loading,
+    error,
+  } = useAsync(async () => ({ key: boardKey, board: await api.board(mode, selectedCategory?.slug) }), [
+    boardKey,
+    version,
+  ]);
+  const switching = fetched?.key !== boardKey;
+  const data = switching ? null : fetched.board;
   const { data: office } = useAsync(() => api.office(selectedCategory?.slug), [selectedCategory?.slug, version]);
 
   const board = BOARDS.find((b) => b.id === mode) ?? BOARDS[0];
@@ -87,7 +97,7 @@ export function LeaderboardPage() {
 
       {error ? <p className="error-text">{error}</p> : null}
 
-      {loading && !data ? (
+      {switching && !error ? (
         <BoardSkeleton />
       ) : data && rows.length === 0 ? (
         <EmptyState
@@ -202,7 +212,7 @@ function PodiumColumn({
       ) : null}
       <div className="avw-wrap">
         <div className="avw">
-          <Avatar name={row.name} size={pos === 1 ? 76 : 60} />
+          <Avatar name={row.name} userId={row.id} size={pos === 1 ? 76 : 60} />
         </div>
         <button
           type="button"
@@ -254,7 +264,7 @@ function LeaderboardRow({
       </span>
 
       <Link to={to} className="lb-main">
-        <Avatar name={row.name} size={40} />
+        <Avatar name={row.name} userId={row.id} size={40} />
         <div className="lb-who">
           <b>
             <span>{row.name}</span>
@@ -305,7 +315,7 @@ function WeekCard({ office, athletes }: { office: OfficeResponse; athletes: Lead
           const done = logged.has(a.id);
           return (
             <div key={a.id} className={`wa ${done ? '' : 'off'}`}>
-              <Avatar name={a.name} size={40} />
+              <Avatar name={a.name} userId={a.id} size={40} />
               {done ? (
                 <i>
                   <CheckIcon size={10} strokeWidth={3.5} />

@@ -19,7 +19,41 @@ export function inferCategoryIconKey(slug: string, name: string): string {
   return 'bar';
 }
 
+/** Icons offered when adding or editing an exercise. */
+export const EXERCISE_ICONS = [
+  '💪',
+  '🦾',
+  '🏋️',
+  '🤸',
+  '🤲',
+  '🪢',
+  '⚡',
+  '💥',
+  '🔥',
+  '🎯',
+  '🏆',
+  '🥇',
+  '🏃',
+  '🚴',
+  '🧗',
+  '🧘',
+  '🥊',
+  '🦵',
+  '🤾',
+  '🪜',
+  '⛓️',
+  '🧱',
+  '🏊',
+  '🦍',
+] as const;
+
+/** An icon the user picked is stored as the emoji itself; older exercises use the legacy keys below. */
+function isEmojiIcon(value: string): boolean {
+  return /^\p{Extended_Pictographic}/u.test(value);
+}
+
 export function exerciseEmoji(iconKey: string, slug?: string): string {
+  if (isEmojiIcon(iconKey)) return iconKey;
   switch (iconKey) {
     case 'assisted-chin-up':
       return '🤲';

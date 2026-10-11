@@ -121,7 +121,7 @@ export function UsersPage() {
           {users.map((user) => (
             <div key={user.id} className="lb-row">
               <Link to={`/users/${user.id}`} className="lb-main">
-                <Avatar name={user.name} size={40} />
+                <Avatar name={user.name} userId={user.id} size={40} />
                 <div className="lb-who">
                   <b>
                     <span>{user.name}</span>

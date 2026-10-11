@@ -4,6 +4,8 @@ import { api, ApiError } from '../api';
 import { todayISO } from '../lib/format';
 import { invalidate } from '../lib/store';
 import { useTheme } from '../lib/ThemeContext';
+import { AvatarPicker } from './AvatarPicker';
+import { db } from '../core/db';
 import { useToast } from './Toast';
 import { AppModal } from './Modal';
 import { Button } from './Button';
@@ -31,11 +33,15 @@ export function UserFormModal({
   const [note, setNote] = useState('');
   const [pb, setPb] = useState('');
   const [pbDate, setPbDate] = useState(todayISO());
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
+    setPhoto(null);
+    setPhotoRemoved(false);
     setError(null);
     setBusy(false);
     setName(user?.name ?? '');
@@ -57,8 +63,20 @@ export function UserFormModal({
         editing && user
           ? await api.updateUser(user.id, payload)
           : await api.createUser({ ...payload, pbAbsolute: pb || null, pbDate });
+      // The photo goes up after the athlete exists. If only the photo fails, the athlete is still saved.
+      let photoFailed = false;
+      try {
+        if (photo) await api.uploadAvatar(res.user.id, photo);
+        else if (photoRemoved && db.user(res.user.id)?.avatarUrl) await api.removeAvatar(res.user.id);
+      } catch {
+        photoFailed = true;
+      }
       invalidate();
-      toast.success(editing ? `${payload.name} updated.` : `${payload.name} joined the board.`);
+      if (photoFailed) {
+        toast.error(`${payload.name} was saved, but the photo could not be uploaded. Try again from Edit.`);
+      } else {
+        toast.success(editing ? `${payload.name} updated.` : `${payload.name} joined the board.`);
+      }
       onSaved?.(res.user);
       onClose();
     } catch (err) {
@@ -92,6 +110,21 @@ export function UserFormModal({
       }
     >
       <View style={styles.form}>
+        <AvatarPicker
+          name={name}
+          userId={user?.id}
+          staged={photo}
+          removed={photoRemoved}
+          hasPhoto={Boolean(user && db.user(user.id)?.avatarUrl)}
+          onPick={(uri) => {
+            setPhoto(uri);
+            setPhotoRemoved(false);
+          }}
+          onRemove={() => {
+            setPhoto(null);
+            setPhotoRemoved(true);
+          }}
+        />
         <TextField label="Full name" value={name} onChangeText={setName} placeholder="e.g. Marta Kowalska" />
         <View style={styles.row}>
           <View style={{ flex: 1 }}>

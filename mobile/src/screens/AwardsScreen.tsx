@@ -41,7 +41,7 @@ function AwardCard({ award }: { award: Award }) {
         onPress={() => navigation.navigate('UserDetail', { id: w.userId })}
         style={styles.awWinner}
       >
-        <Avatar name={w.name} size={30} />
+        <Avatar name={w.name} userId={w.userId} size={30} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: '700' }} numberOfLines={1}>
             {firstName(w.name)}
@@ -119,7 +119,7 @@ export function AwardsScreen() {
                   onPress={() => openProfile(row.userId)}
                   style={[styles.xr, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
                 >
-                  <Avatar name={row.name} size={36} />
+                  <Avatar name={row.name} userId={row.userId} size={36} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[styles.xrName, { color: colors.text }]} numberOfLines={1}>
                       {firstName(row.name)}
@@ -147,7 +147,7 @@ export function AwardsScreen() {
                   onPress={() => openProfile(row.id)}
                   style={[styles.xr, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
                 >
-                  <Avatar name={row.name} size={36} />
+                  <Avatar name={row.name} userId={row.id} size={36} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text numberOfLines={1}>
                       <Text style={[styles.xrName, { color: colors.text }]}>{row.name}</Text>

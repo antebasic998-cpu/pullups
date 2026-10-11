@@ -15,7 +15,7 @@ const RING_R = 46;
 const RING_C = 2 * Math.PI * RING_R;
 
 /** Avatar with a level-progress ring around it and a "LVL n" pill underneath. */
-export function LevelRing({ name, level }: { name: string; level: Level | null }) {
+export function LevelRing({ name, userId, level }: { name: string; userId?: string; level: Level | null }) {
   const pct = level ? Math.min(100, Math.max(0, level.progress)) : 0;
   return (
     <div className="lvl-ring">
@@ -30,7 +30,7 @@ export function LevelRing({ name, level }: { name: string; level: Level | null }
           transform="rotate(-90 50 50)"
         />
       </svg>
-      <Avatar name={name} size={74} />
+      <Avatar name={name} userId={userId} size={74} />
       {level ? <i className="lvl">LVL {level.level}</i> : null}
     </div>
   );

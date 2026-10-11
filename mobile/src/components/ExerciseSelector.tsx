@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../lib/ThemeContext';
 import { db } from '../core/db';
-import { BarIcon, CheckIcon, ChevronDownIcon, XIcon } from './Icons';
+import { exerciseEmoji } from '../lib/categoryUtils';
+import { CheckIcon, ChevronDownIcon, XIcon } from './Icons';
 import type { ExerciseCategory } from '../types';
 
 interface ExerciseSelectorProps {
@@ -18,7 +19,9 @@ export function ExerciseSelector({ selected, onSelect, categories, size = 'norma
   const [open, setOpen] = useState(false);
 
   const available = categories && categories.length > 0 ? categories : db.categories();
-  const activeCategory = selected ?? available[0] ?? db.defaultCategory();
+  // `selected` is a snapshot held by the screen; look it up again so renames and new icons show immediately.
+  const activeCategory =
+    available.find((c) => c.id === selected?.id || c.slug === selected?.slug) ?? selected ?? available[0] ?? db.defaultCategory();
   const compact = size === 'compact';
 
   return (
@@ -34,7 +37,9 @@ export function ExerciseSelector({ selected, onSelect, categories, size = 'norma
           { backgroundColor: colors.surface2, borderColor: colors.border },
         ]}
       >
-        <BarIcon size={compact ? 16 : 18} strokeWidth={2} color={colors.accent} />
+        <Text style={{ fontSize: compact ? 15 : 17 }} allowFontScaling={false}>
+          {exerciseEmoji(activeCategory.iconKey, activeCategory.slug)}
+        </Text>
         <Text style={[styles.label, compact && { fontSize: 13 }, { color: colors.text }]} numberOfLines={1}>
           {activeCategory.name}
         </Text>
@@ -75,6 +80,9 @@ export function ExerciseSelector({ selected, onSelect, categories, size = 'norma
                       isSelected && { backgroundColor: colors.surface2 },
                     ]}
                   >
+                    <Text style={{ fontSize: 20, width: 26, textAlign: 'center' }} allowFontScaling={false}>
+                      {exerciseEmoji(cat.iconKey, cat.slug)}
+                    </Text>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[styles.itemName, { color: isSelected ? colors.accent : colors.text }]}>
                         {cat.name}

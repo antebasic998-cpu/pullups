@@ -84,14 +84,20 @@ export function LeaderboardScreen() {
     navigation.setParams({ category: cat.slug } as never);
   };
 
-  const { data, loading, error } = useAsync(
-    () => api.board(selectedCategory.slug, mode),
-    [selectedCategory.slug, mode, version],
-  );
+  // Tag the board with the exercise/mode it was fetched for: until the response for the current selection
+  // arrives we show the skeleton, not the previous selection's rows under the new mode's numbers.
+  const boardKey = `${selectedCategory.slug}|${mode}`;
+  const {
+    data: fetched,
+    loading,
+    error,
+  } = useAsync(async () => ({ key: boardKey, board: await api.board(selectedCategory.slug, mode) }), [boardKey, version]);
+  const switching = fetched?.key !== boardKey;
+  const data = switching ? null : fetched.board;
   const { data: office } = useAsync(() => api.office(selectedCategory.slug), [selectedCategory.slug, version]);
 
   const board = BOARDS.find((b) => b.id === mode) ?? BOARDS[0];
-  const exerciseName = selectedCategory.name;
+  const exerciseName = (db.category(selectedCategory.slug) ?? selectedCategory).name; // fresh after a rename
 
   const rows = data?.rows ?? [];
   const ranked = rows.filter((r) => r.rank !== null);
@@ -133,7 +139,7 @@ export function LeaderboardScreen() {
 
       {error ? <Text style={{ color: colors.danger, marginTop: 8 }}>{error}</Text> : null}
 
-      {loading && !data ? (
+      {switching && !error ? (
         <BoardSkeleton />
       ) : data && rows.length === 0 ? (
         <View style={{ marginTop: 20 }}>
@@ -248,7 +254,7 @@ function PodiumColumn({
           ]}
         >
           <View style={{ borderWidth: 3, borderColor: colors.bg, borderRadius: size / 2, overflow: 'hidden' }}>
-            <Avatar name={row.name} size={size - 6} />
+            <Avatar name={row.name} userId={row.id} size={size - 6} />
           </View>
         </View>
         <TouchableOpacity
@@ -311,7 +317,7 @@ function LeaderboardRow({
         <Text style={[styles.rk, { color: isUnranked ? colors.faint : rankColor(row.rank ?? 0, colors) }]}>
           {isUnranked ? '—' : row.rank}
         </Text>
-        <Avatar name={row.name} size={40} />
+        <Avatar name={row.name} userId={row.id} size={40} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.whoLine}>
             <Text style={[styles.who, { color: colors.text }]} numberOfLines={1}>
@@ -374,7 +380,7 @@ function WeekCard({ office, athletes }: { office: OfficeResponse; athletes: Lead
             <View key={a.id} style={styles.wa}>
               <View>
                 <View style={{ opacity: done ? 1 : 0.28 }}>
-                  <Avatar name={a.name} size={40} />
+                  <Avatar name={a.name} userId={a.id} size={40} />
                 </View>
                 {done ? (
                   <View style={[styles.waCheck, { backgroundColor: colors.accent, borderColor: colors.surface2 }]}>

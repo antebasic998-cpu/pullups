@@ -111,7 +111,7 @@ export function UsersScreen() {
                 style={styles.rowMain}
                 onPress={() => navigation.navigate('UserDetail', { id: user.id, category: selectedCategory?.slug })}
               >
-                <Avatar name={user.name} size={40} />
+                <Avatar name={user.name} userId={user.id} size={40} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                     {user.name}

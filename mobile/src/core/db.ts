@@ -30,6 +30,8 @@ export interface RawUser {
   age: number | null;
   weightKg: number;
   note: string;
+  /** Public URL of the profile photo; null = initials. */
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -127,6 +129,7 @@ export async function syncFromSupabase(): Promise<DbData> {
           age: u.age,
           weightKg: Number(u.weight_kg),
           note: u.note ?? '',
+          avatarUrl: u.avatar_url ?? null,
           createdAt: u.created_at,
           updatedAt: u.updated_at,
         }))
@@ -285,6 +288,14 @@ export const db = {
     data.categories.sort((a, b) => a.displayOrder - b.displayOrder);
     schedulePersist();
     return category;
+  },
+  updateCategory(id: string, patch: Partial<RawExerciseCategory>) {
+    const cats = ensureLoaded().categories;
+    const i = cats.findIndex((c) => c.id === id);
+    if (i === -1) return null;
+    cats[i] = { ...cats[i], ...patch, id, slug: cats[i].slug, updatedAt: new Date().toISOString() };
+    schedulePersist();
+    return cats[i];
   },
   insertUser(user: RawUser) {
     ensureLoaded().users.push(user);

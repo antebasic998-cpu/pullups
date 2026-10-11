@@ -66,6 +66,7 @@ export async function syncFromSupabase() {
           age: u.age,
           weightKg: Number(u.weight_kg),
           note: u.note ?? '',
+          avatarUrl: u.avatar_url ?? null,
           createdAt: u.created_at,
           updatedAt: u.updated_at,
         }))

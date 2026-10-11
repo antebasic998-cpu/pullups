@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { api } from '../api';
 import { Card, PageHeader } from '../components/Bits';
-import { Button } from '../components/Button';
+import { Button, IconButton } from '../components/Button';
 import { ExerciseFormModal } from '../components/ExerciseFormModal';
-import { MoonIcon, SunIcon } from '../components/Icons';
+import { MoonIcon, PencilIcon, SunIcon } from '../components/Icons';
 import { Screen } from '../components/Screen';
 import { exerciseEmoji } from '../lib/categoryUtils';
 import { useSettings } from '../lib/SettingsContext';
@@ -18,6 +18,7 @@ export function SettingsScreen() {
   const version = useDataVersion();
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
   const [addExerciseOpen, setAddExerciseOpen] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<ExerciseCategory | null>(null);
 
   useEffect(() => {
     void api.categories().then(setCategories);
@@ -58,7 +59,7 @@ export function SettingsScreen() {
       <Card style={styles.card}>
         <Text style={[styles.cardTitle, { color: colors.text }]}>Exercises</Text>
         <Text style={[styles.hint, { color: colors.muted }]}>
-          Add new exercise types for the whole office. They appear in the leaderboard and log form for everyone.
+          Add exercise types for the whole office, or tap the pencil to rename one or change its icon. Changes show up for everyone.
         </Text>
         <View style={[styles.list, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
           {categories.map((cat, i) => (
@@ -75,6 +76,9 @@ export function SettingsScreen() {
                   {cat.slug} · bodyweight-normalized reps
                 </Text>
               </View>
+              <IconButton label={`Edit ${cat.name}`} onPress={() => setEditingExercise(cat)} size={36}>
+                <PencilIcon size={16} strokeWidth={2} color={colors.muted} />
+              </IconButton>
             </View>
           ))}
         </View>
@@ -111,6 +115,11 @@ export function SettingsScreen() {
       </Text>
 
       <ExerciseFormModal visible={addExerciseOpen} onClose={() => setAddExerciseOpen(false)} />
+      <ExerciseFormModal
+        visible={editingExercise !== null}
+        category={editingExercise}
+        onClose={() => setEditingExercise(null)}
+      />
     </Screen>
   );
 }

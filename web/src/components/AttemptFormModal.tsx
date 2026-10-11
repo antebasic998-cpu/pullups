@@ -189,7 +189,7 @@ export function AttemptFormModal({ open, onClose, userId, category, onSaved }: P
                 aria-label={`Athlete: ${user.name}`}
                 style={{ cursor: rows.length > 1 ? 'pointer' : 'default' }}
               >
-                <Avatar name={user.name} size={40} />
+                <Avatar name={user.name} userId={user.id} size={40} />
                 <div>
                   <b>{user.name}</b>
                   <small>
@@ -215,7 +215,7 @@ export function AttemptFormModal({ open, onClose, userId, category, onSaved }: P
                         setPickerOpen(false);
                       }}
                     >
-                      <Avatar name={r.name} size={30} />
+                      <Avatar name={r.name} userId={r.id} size={30} />
                       <span>{r.name}</span>
                     </button>
                   ))}

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { api } from '../api';
+import type { ExerciseCategory } from '../types';
 import { ExerciseFormModal } from '../components/ExerciseFormModal';
-import { MoonIcon, SunIcon } from '../components/Icons';
+import { MoonIcon, PencilIcon, SunIcon } from '../components/Icons';
 import { PageHeader } from '../components/Bits';
 import { useAsync, useTheme } from '../lib/hooks';
 import { exerciseEmoji } from '../lib/categoryUtils';
@@ -14,6 +15,7 @@ export function SettingsPage() {
   const { theme, toggle } = useTheme();
   const { data, loading } = useAsync(() => api.categories(), [version]);
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<ExerciseCategory | null>(null);
 
   const categories = data?.categories ?? [];
 
@@ -46,7 +48,8 @@ export function SettingsPage() {
       <section className="set-card">
         <h2>Exercises</h2>
         <p>
-          Add new exercise types for the whole office. They appear in the leaderboard and log form for everyone.
+          Add exercise types for the whole office, or tap the pencil to rename one or change its icon. Changes show up
+          for everyone.
         </p>
 
         <div className="set-list">
@@ -60,6 +63,15 @@ export function SettingsPage() {
                   <div className="text-sm font-semibold">{cat.name}</div>
                   <div className="text-xs faint">{cat.slug} · bodyweight-normalized reps</div>
                 </div>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => setEditing(cat)}
+                  title={`Edit ${cat.name}`}
+                  aria-label={`Edit ${cat.name}`}
+                >
+                  <PencilIcon size={16} />
+                </button>
               </div>
             ))
           )}
@@ -98,6 +110,7 @@ export function SettingsPage() {
       <p className="foot">score = pull-ups × (bodyweight ÷ office median) ^ 0.67</p>
 
       <ExerciseFormModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <ExerciseFormModal open={editing !== null} category={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }

@@ -1,19 +1,41 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { avatarColor, initials } from '../lib/format';
+import { useAvatarUrl } from '../lib/avatars';
 
-export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+/**
+ * Round athlete avatar: the photo when there is one (looked up by `userId`, or passed as `url`),
+ * otherwise coloured initials.
+ */
+export function Avatar({
+  name,
+  size = 32,
+  userId,
+  url,
+}: {
+  name: string;
+  size?: number;
+  userId?: string | null;
+  /** Overrides the lookup – used to preview a photo that has not been saved yet. */
+  url?: string | null;
+}) {
+  const known = useAvatarUrl(userId);
+  const src = url ?? known;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+
+  const showPhoto = Boolean(src) && !failed;
   return (
     <span
-      className="avatar"
+      className={`avatar${showPhoto ? ' avatar-photo' : ''}`}
       style={{
         width: size,
         height: size,
-        background: avatarColor(name),
+        background: showPhoto ? 'var(--surface-3)' : avatarColor(name),
         fontSize: size * 0.38,
       }}
       aria-hidden="true"
     >
-      {initials(name)}
+      {showPhoto ? <img src={src ?? undefined} alt="" draggable={false} onError={() => setFailed(true)} /> : initials(name)}
     </span>
   );
 }

@@ -1,8 +1,44 @@
-import { StyleSheet, Text, View, type TextStyle, type ViewStyle } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, StyleSheet, Text, View, type TextStyle, type ViewStyle } from 'react-native';
+import { db } from '../core/db';
 import { avatarColor, initials } from '../lib/format';
+import { useDataVersion } from '../lib/store';
 import { useTheme } from '../lib/ThemeContext';
 
-export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+/**
+ * Round athlete avatar: the profile photo when there is one (looked up by `userId`, or passed as `url`),
+ * otherwise coloured initials.
+ */
+export function Avatar({
+  name,
+  size = 32,
+  userId,
+  url,
+}: {
+  name: string;
+  size?: number;
+  userId?: string | null;
+  /** Overrides the lookup – used to preview a photo that has not been saved yet. */
+  url?: string | null;
+}) {
+  const { colors } = useTheme();
+  useDataVersion(); // photos change through the shared data version
+  const src = url ?? (userId ? (db.user(userId)?.avatarUrl ?? null) : null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+
+  if (src && !failed) {
+    return (
+      <Image
+        source={{ uri: src }}
+        onError={() => setFailed(true)}
+        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.surface3 }}
+        resizeMode="cover"
+        accessibilityIgnoresInvertColors
+      />
+    );
+  }
+
   return (
     <View
       style={{

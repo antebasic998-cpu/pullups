@@ -203,7 +203,7 @@ export function AttemptFormModal({ visible, onClose, userId, category, onAddAthl
                   accessibilityLabel={`Athlete: ${user.name}`}
                   style={[styles.who, { backgroundColor: colors.surface2 }]}
                 >
-                  <Avatar name={user.name} size={40} />
+                  <Avatar name={user.name} userId={user.id} size={40} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[styles.whoName, { color: colors.text }]} numberOfLines={1}>
                       {user.name}
@@ -235,7 +235,7 @@ export function AttemptFormModal({ visible, onClose, userId, category, onAddAthl
                             }}
                             style={[styles.menuRow, on && { backgroundColor: colors.surface3 }]}
                           >
-                            <Avatar name={r.name} size={30} />
+                            <Avatar name={r.name} userId={r.id} size={30} />
                             <Text style={{ color: colors.text, fontSize: 14.5, fontWeight: on ? '700' : '500' }}>
                               {r.name}
                             </Text>

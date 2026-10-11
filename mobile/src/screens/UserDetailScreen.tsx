@@ -136,7 +136,7 @@ export function UserDetailScreen() {
   }
 
   const goBack = () => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Tabs'));
-  const exerciseName = selectedCategory.name;
+  const exerciseName = (db.category(selectedCategory.slug) ?? selectedCategory).name; // fresh after a rename
   const multiCategory = db.categories().length > 1;
 
   const topBar = (
@@ -205,7 +205,7 @@ export function UserDetailScreen() {
       <View style={[styles.hero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <CornerGlow color={colors.accent} opacity={0.13} />
         <View style={styles.heroRow}>
-          <LevelRing name={user.name} level={user.level} ringBg={colors.surface} />
+          <LevelRing name={user.name} userId={user.id} level={user.level} ringBg={colors.surface} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
               {user.name}

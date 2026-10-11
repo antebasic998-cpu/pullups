@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import type { ExerciseCategory } from '../types';
-import { BarIcon, CheckIcon, ChevronDownIcon } from './Icons';
+import { exerciseEmoji } from '../lib/categoryUtils';
+import { useDataVersion } from '../lib/store';
+import { CheckIcon, ChevronDownIcon } from './Icons';
 
 interface Props {
   selected: ExerciseCategory | null;
@@ -20,6 +22,7 @@ export function ExerciseSelector({ selected, onSelect, loading, initialSlug, var
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const version = useDataVersion(); // exercises can be added / renamed from Settings
 
   useEffect(() => {
     let active = true;
@@ -36,7 +39,7 @@ export function ExerciseSelector({ selected, onSelect, loading, initialSlug, var
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSlug]);
+  }, [initialSlug, version]);
 
   // Close the dropdown on outside click / Escape.
   useEffect(() => {
@@ -92,7 +95,9 @@ export function ExerciseSelector({ selected, onSelect, loading, initialSlug, var
         onClick={() => setOpen((v) => !v)}
         style={{ opacity: loading ? 0.7 : 1 }}
       >
-        <BarIcon size={18} strokeWidth={2} />
+        <span className="ex-ico" aria-hidden="true">
+          {exerciseEmoji(current.iconKey, current.slug)}
+        </span>
         <span>{current.name}</span>
         <ChevronDownIcon size={15} strokeWidth={2.4} />
       </button>
@@ -111,7 +116,9 @@ export function ExerciseSelector({ selected, onSelect, loading, initialSlug, var
                 setOpen(false);
               }}
             >
-              <BarIcon size={17} strokeWidth={2} />
+              <span className="ex-ico" aria-hidden="true">
+                {exerciseEmoji(cat.iconKey, cat.slug)}
+              </span>
               <span>{cat.name}</span>
               {isSelected(cat) ? <CheckIcon size={16} strokeWidth={2.6} /> : null}
             </button>

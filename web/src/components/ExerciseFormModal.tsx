@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api';
 import { exerciseEmoji, inferCategoryIconKey, slugifyCategoryName } from '../lib/categoryUtils';
 import { invalidate } from '../lib/store';
+import { IconPicker } from './IconPicker';
 import { Modal } from './Modal';
 import { useToast } from './Toast';
 import type { ExerciseCategory } from '../types';
@@ -9,41 +10,65 @@ import type { ExerciseCategory } from '../types';
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Pass an exercise to rename it / change its icon; leave empty to add a new one. */
+  category?: ExerciseCategory | null;
   onSaved?: (category: ExerciseCategory) => void;
 }
 
-export function ExerciseFormModal({ open, onClose, onSaved }: Props) {
+export function ExerciseFormModal({ open, onClose, category, onSaved }: Props) {
   const toast = useToast();
+  const editing = Boolean(category);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('💪');
+  // While adding, the icon follows the name ("chin" → 🤸) until the user picks one themselves.
+  const [iconPicked, setIconPicked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setName('');
-    setDescription('');
+    setName(category?.name ?? '');
+    setDescription(category?.description ?? '');
+    setIcon(category ? exerciseEmoji(category.iconKey, category.slug) : '💪');
+    setIconPicked(Boolean(category));
     setError(null);
     setBusy(false);
-  }, [open]);
+  }, [open, category]);
 
-  const previewSlug = name.trim() ? slugifyCategoryName(name) : '';
+  function onNameChange(value: string) {
+    setName(value);
+    if (!iconPicked) {
+      const slug = slugifyCategoryName(value);
+      setIcon(exerciseEmoji(inferCategoryIconKey(slug, value.trim()), slug));
+    }
+  }
+
+  const previewSlug = !editing && name.trim() ? slugifyCategoryName(name) : '';
 
   async function submit() {
     setError(null);
     if (!name.trim()) return setError('Enter a name for the exercise.');
     setBusy(true);
     try {
-      const res = await api.createCategory({
+      const input = {
         name: name.trim(),
         description: description.trim(),
-      });
+        iconKey: icon,
+      };
+      const res = category ? await api.updateCategory(category.id, input) : await api.createCategory(input);
       invalidate();
-      toast.success(`${res.category.name} added to the board.`);
+      toast.success(editing ? `${res.category.name} updated.` : `${res.category.name} added to the board.`);
       onSaved?.(res.category);
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this exercise.');
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : editing
+            ? 'Could not save this exercise.'
+            : 'Could not add this exercise.',
+      );
     } finally {
       setBusy(false);
     }
@@ -53,15 +78,19 @@ export function ExerciseFormModal({ open, onClose, onSaved }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Add exercise"
-      subtitle="New exercises sync to everyone on the board automatically."
+      title={editing ? `Edit ${category?.name}` : 'Add exercise'}
+      subtitle={
+        editing
+          ? 'Results stay exactly as they are — only the name and icon change, for everyone.'
+          : 'New exercises sync to everyone on the board automatically.'
+      }
       footer={
         <>
           <button type="button" className="btn" onClick={onClose} disabled={busy}>
             Cancel
           </button>
           <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>
-            {busy ? 'Saving…' : 'Add exercise'}
+            {busy ? 'Saving…' : editing ? 'Save changes' : 'Add exercise'}
           </button>
         </>
       }
@@ -72,11 +101,22 @@ export function ExerciseFormModal({ open, onClose, onSaved }: Props) {
           <input
             className="input"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => onNameChange(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
             placeholder="Assisted Chin-up"
             autoFocus
           />
         </label>
+        <div className="field">
+          <span className="field-label">Icon</span>
+          <IconPicker
+            value={icon}
+            onChange={(next) => {
+              setIcon(next);
+              setIconPicked(true);
+            }}
+          />
+        </div>
         <label className="field">
           <span className="field-label">Description (optional)</span>
           <input
@@ -89,22 +129,23 @@ export function ExerciseFormModal({ open, onClose, onSaved }: Props) {
         {previewSlug ? (
           <div
             className="flex items-center gap-3 rounded-xl border p-3"
-            style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface-2)',
+            }}
           >
-            <span className="text-2xl">
-              {exerciseEmoji(inferCategoryIconKey(previewSlug, name.trim()), previewSlug)}
-            </span>
+            <span className="text-2xl">{icon}</span>
             <div className="min-w-0">
               <div className="font-semibold">{name.trim()}</div>
               <div className="text-xs faint">slug: {previewSlug}</div>
             </div>
           </div>
         ) : null}
-        <p className="m-0 text-xs faint leading-relaxed">
-          Scored like pull-ups and chin-ups — reps with bodyweight-normalized points. Names containing
-          “assisted”, “chin”, or “pull” pick the right icon automatically.
-        </p>
-        {error ? <p className="m-0 text-sm" style={{ color: 'var(--danger)' }}>{error}</p> : null}
+        {error ? (
+          <p className="m-0 text-sm" style={{ color: 'var(--danger)' }}>
+            {error}
+          </p>
+        ) : null}
       </div>
     </Modal>
   );

@@ -1,5 +1,5 @@
 import { db, syncFromSupabase, type RawExerciseCategory } from './core/db';
-import { inferCategoryIconKey, slugifyCategoryName } from './lib/categoryUtils';
+import { inferCategoryIconKey, normalizeCategoryIcon, slugifyCategoryName } from './lib/categoryUtils';
 import {
   allUsers,
   computeGamificationDelta,
@@ -88,7 +88,18 @@ export interface AttemptInput {
 export interface CategoryInput {
   name: string;
   description?: string;
+  /** An emoji from the picker (or a legacy icon key). Omit to guess from the name. */
+  iconKey?: string;
 }
+
+function requireCategoryIcon(raw: unknown): string {
+  const icon = normalizeCategoryIcon(raw);
+  if (!icon) throw new ApiError(400, 'Pick one of the available icons.');
+  return icon;
+}
+
+const AVATAR_BUCKET = 'avatars';
+const avatarPath = (userId: string) => `${userId}.jpg`;
 
 function requireCategoryName(raw: unknown): string {
   const name = String(raw ?? '').trim();
@@ -134,7 +145,8 @@ export const api = {
     }
 
     const displayOrder = db.categories().reduce((max, c) => Math.max(max, c.displayOrder), 0) + 1;
-    const iconKey = inferCategoryIconKey(slug, name);
+    const hasIcon = input.iconKey !== undefined && input.iconKey !== null && input.iconKey !== '';
+    const iconKey = hasIcon ? requireCategoryIcon(input.iconKey) : inferCategoryIconKey(slug, name);
     const now = new Date().toISOString();
 
     const payload = {
@@ -162,6 +174,80 @@ export const api = {
     db.insertCategory(category);
     invalidate();
     return category;
+  },
+
+  /** Rename an exercise and/or change its icon. The slug never changes, so links and results stay valid. */
+  updateCategory: async (id: string, input: Partial<CategoryInput>): Promise<ExerciseCategory> => {
+    const existing = db.categories().find((c) => c.id === id);
+    if (!existing) throw new ApiError(404, 'Exercise not found.');
+
+    const patch: Database['public']['Tables']['exercise_categories']['Update'] = {
+      updated_at: new Date().toISOString(),
+    };
+    if (input.name !== undefined) {
+      const name = requireCategoryName(input.name);
+      const slug = slugifyCategoryName(name);
+      if (!slug) throw new ApiError(400, 'Exercise name must contain letters or numbers.');
+      const clash = db
+        .categories()
+        .some((c) => c.id !== existing.id && (c.slug === slug || c.name.toLowerCase() === name.toLowerCase()));
+      if (clash) throw new ApiError(409, `${name} already exists on the board.`);
+      patch.name = name;
+    }
+    if (input.iconKey !== undefined) patch.icon_key = requireCategoryIcon(input.iconKey);
+    if (input.description !== undefined) patch.description = String(input.description).slice(0, 200) || null;
+
+    const { data, error } = await supabase
+      .from('exercise_categories')
+      .update(patch)
+      .eq('id', existing.id)
+      .select()
+      .single();
+    if (error) throw new ApiError(400, error.message);
+
+    const category = db.updateCategory(existing.id, mapCategoryRow(data))!;
+    invalidate();
+    return category;
+  },
+
+  /** Uploads a local, already cropped/downscaled JPEG (see lib/photo.ts) as the athlete's profile photo. */
+  uploadAvatar: async (userId: string, fileUri: string): Promise<string> => {
+    const user = findUserOr404(userId);
+    const bytes = await (await fetch(fileUri)).arrayBuffer();
+    if (bytes.byteLength === 0 || bytes.byteLength > 400 * 1024) {
+      throw new ApiError(400, 'Photo is too large. Pick a smaller one.');
+    }
+
+    const path = avatarPath(user.id);
+    const { error: upErr } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, bytes, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' });
+    if (upErr) throw new ApiError(400, upErr.message);
+
+    // Cache-busting suffix: the path is stable, the picture is not.
+    const avatarUrl = `${supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
+    const { error } = await supabase
+      .from('users')
+      .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) throw new ApiError(400, error.message);
+
+    db.updateUser(user.id, { avatarUrl });
+    invalidate();
+    return avatarUrl;
+  },
+
+  removeAvatar: async (userId: string): Promise<void> => {
+    const user = findUserOr404(userId);
+    await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath(user.id)]);
+    const { error } = await supabase
+      .from('users')
+      .update({ avatar_url: null, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) throw new ApiError(400, error.message);
+
+    db.updateUser(user.id, { avatarUrl: null });
+    invalidate();
   },
 
   meta: async (categorySlugOrId?: string): Promise<Meta> => {
@@ -224,6 +310,7 @@ export const api = {
       age: userRow.age,
       weightKg: Number(userRow.weight_kg),
       note: userRow.note ?? '',
+      avatarUrl: userRow.avatar_url ?? null,
       createdAt: userRow.created_at,
       updatedAt: userRow.updated_at,
     };
@@ -325,6 +412,7 @@ export const api = {
     }
 
     db.deleteUser(id);
+    void supabase.storage.from(AVATAR_BUCKET).remove([avatarPath(id)]); // best effort
     return { ok: true };
   },
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api';
+import { AvatarPicker } from './AvatarPicker';
 import { Modal } from './Modal';
+import { useAvatarUrl } from '../lib/avatars';
 import { useToast } from './Toast';
 import { invalidate } from '../lib/store';
 import { todayISO } from '../lib/format';
@@ -23,11 +25,16 @@ export function UserFormModal({ open, onClose, user, onSaved }: Props) {
   const [note, setNote] = useState('');
   const [pb, setPb] = useState('');
   const [pbDate, setPbDate] = useState(todayISO());
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const savedPhoto = useAvatarUrl(user?.id);
 
   useEffect(() => {
     if (!open) return;
+    setPhoto(null);
+    setPhotoRemoved(false);
     setError(null);
     setBusy(false);
     setName(user?.name ?? '');
@@ -45,12 +52,34 @@ export function UserFormModal({ open, onClose, user, onSaved }: Props) {
 
     setBusy(true);
     try {
-      const payload = { name: name.trim(), age: age || null, weightKg: weight.replace(',', '.'), note: note.trim() };
-      const res = editing && user
-        ? await api.updateUser(user.id, payload)
-        : await api.createUser({ ...payload, pbAbsolute: pb || null, pbDate });
+      const payload = {
+        name: name.trim(),
+        age: age || null,
+        weightKg: weight.replace(',', '.'),
+        note: note.trim(),
+      };
+      const res =
+        editing && user
+          ? await api.updateUser(user.id, payload)
+          : await api.createUser({
+              ...payload,
+              pbAbsolute: pb || null,
+              pbDate,
+            });
+      // The photo goes up after the athlete exists. If only the photo fails, the athlete is still saved.
+      let photoFailed = false;
+      try {
+        if (photo) await api.uploadAvatar(res.user.id, photo);
+        else if (photoRemoved && savedPhoto) await api.deleteAvatar(res.user.id);
+      } catch {
+        photoFailed = true;
+      }
       invalidate();
-      toast.success(editing ? `${payload.name} updated.` : `${payload.name} joined the board.`);
+      if (photoFailed) {
+        toast.error(`${payload.name} was saved, but the photo could not be uploaded. Try again from Edit.`);
+      } else {
+        toast.success(editing ? `${payload.name} updated.` : `${payload.name} joined the board.`);
+      }
       onSaved?.(res.user);
       onClose();
     } catch (err) {
@@ -82,6 +111,22 @@ export function UserFormModal({ open, onClose, user, onSaved }: Props) {
       }
     >
       <div className="flex flex-col gap-4">
+        <AvatarPicker
+          name={name}
+          userId={user?.id}
+          staged={photo}
+          removed={photoRemoved}
+          hasPhoto={Boolean(savedPhoto)}
+          onPick={(dataUrl) => {
+            setPhoto(dataUrl);
+            setPhotoRemoved(false);
+          }}
+          onRemove={() => {
+            setPhoto(null);
+            setPhotoRemoved(true);
+          }}
+        />
+
         <div className="field">
           <label className="label" htmlFor="uf-name">
             Full name
@@ -127,7 +172,13 @@ export function UserFormModal({ open, onClose, user, onSaved }: Props) {
         </div>
 
         {!editing ? (
-          <div className="rounded-xl border p-3.5" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+          <div
+            className="rounded-xl border p-3.5"
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface-2)',
+            }}
+          >
             <p className="m-0 text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
               Already have a personal best from the office whiteboard? Optional — record it now so the leaderboard is
               complete from day one.

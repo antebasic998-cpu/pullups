@@ -69,12 +69,22 @@ export interface AttemptInput {
 export interface CategoryInput {
   name: string;
   description?: string;
+  /** An emoji from the picker (or a legacy icon key). Omit to let the server guess from the name. */
+  iconKey?: string;
 }
 
 export const api = {
   categories: () => request<{ categories: ExerciseCategory[] }>('/categories'),
   createCategory: (input: CategoryInput) =>
-    request<{ category: ExerciseCategory }>('/categories', { method: 'POST', body: JSON.stringify(input) }),
+    request<{ category: ExerciseCategory }>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updateCategory: (id: string, input: Partial<CategoryInput>) =>
+    request<{ category: ExerciseCategory }>(`/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
   meta: (category?: string) => request<Meta>(`/meta${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   board: (mode: BoardMode, category?: string) =>
     request<Board>(`/leaderboard?mode=${mode}${category ? `&category=${encodeURIComponent(category)}` : ''}`),
@@ -86,13 +96,30 @@ export const api = {
     request<UserResponse>(`/users/${id}${category ? `?category=${encodeURIComponent(category)}` : ''}`),
 
   createUser: (input: UserInput) =>
-    request<UserResponse>('/users', { method: 'POST', body: JSON.stringify(input) }),
+    request<UserResponse>('/users', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   updateUser: (id: string, input: Partial<UserInput>) =>
-    request<UserResponse>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+    request<UserResponse>(`/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  avatars: () => request<{ avatars: Record<string, string> }>('/avatars'),
+  /** `image` is a JPEG data URL, already cropped and downscaled by lib/image.ts. */
+  uploadAvatar: (userId: string, image: string) =>
+    request<{ avatarUrl: string }>(`/users/${userId}/avatar`, {
+      method: 'POST',
+      body: JSON.stringify({ image }),
+    }),
+  deleteAvatar: (userId: string) => request<{ ok: true }>(`/users/${userId}/avatar`, { method: 'DELETE' }),
   deleteUser: (id: string) => request<{ ok: true }>(`/users/${id}`, { method: 'DELETE' }),
 
   addAttempt: (userId: string, input: AttemptInput) =>
-    request<UserResponse>(`/users/${userId}/sessions`, { method: 'POST', body: JSON.stringify(input) }),
+    request<UserResponse>(`/users/${userId}/sessions`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   deleteAttempt: (attemptId: string) => request<{ ok: true }>(`/sessions/${attemptId}`, { method: 'DELETE' }),
   importCsv: (userId: string, csv: string, categoryId?: string) =>
     request<ImportResponse>(`/users/${userId}/import`, {

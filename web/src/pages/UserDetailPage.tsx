@@ -219,7 +219,7 @@ export function UserDetailPage() {
         {/* Hero */}
         <section className="hero">
           <div className="hero-top">
-            <LevelRing name={user.name} level={user.level} />
+            <LevelRing name={user.name} userId={user.id} level={user.level} />
             <div className="hero-name">
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.15, overflowWrap: 'anywhere' }}>
                 {user.name}

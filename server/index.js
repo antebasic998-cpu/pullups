@@ -21,7 +21,7 @@ import {
 } from './service.js';
 import { todayISO } from './scoring.js';
 import { DEFAULT_PORT } from './ports.js';
-import { inferCategoryIconKey, slugifyCategoryName } from './categoryUtils.js';
+import { inferCategoryIconKey, normalizeCategoryIcon, slugifyCategoryName } from './categoryUtils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, '..', 'dist');
@@ -119,6 +119,31 @@ app.get('/api/health', (_req, res) =>
 
 app.get('/api/categories', (_req, res) => res.json({ categories: db.categories() }));
 
+function categoryDto(data) {
+  return {
+    id: data.id,
+    slug: data.slug,
+    name: data.name,
+    shortName: data.short_name,
+    description: data.description ?? '',
+    iconKey: data.icon_key,
+    unit: data.unit,
+    scoreType: data.score_type,
+    normalizationType: data.normalization_type,
+    normalizationExponent: Number(data.normalization_exponent),
+    isActive: data.is_active,
+    displayOrder: data.display_order,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+function requireCategoryIcon(raw) {
+  const icon = normalizeCategoryIcon(raw);
+  if (!icon) throw new HttpError(400, 'Pick one of the available icons.');
+  return icon;
+}
+
 app.post(
   '/api/categories',
   wrap(async (req, res) => {
@@ -130,7 +155,8 @@ app.post(
     }
 
     const displayOrder = db.categories().reduce((max, c) => Math.max(max, c.displayOrder), 0) + 1;
-    const iconKey = inferCategoryIconKey(slug, name);
+    const hasIcon = req.body?.iconKey !== undefined && req.body?.iconKey !== null && req.body?.iconKey !== '';
+    const iconKey = hasIcon ? requireCategoryIcon(req.body.iconKey) : inferCategoryIconKey(slug, name);
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -155,26 +181,47 @@ app.post(
 
     if (error) throw new HttpError(400, error.message);
 
+    db.invalidate();
     await syncFromSupabase();
 
-    const category = {
-      id: data.id,
-      slug: data.slug,
-      name: data.name,
-      shortName: data.short_name,
-      description: data.description ?? '',
-      iconKey: data.icon_key,
-      unit: data.unit,
-      scoreType: data.score_type,
-      normalizationType: data.normalization_type,
-      normalizationExponent: Number(data.normalization_exponent),
-      isActive: data.is_active,
-      displayOrder: data.display_order,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+    res.status(201).json({ category: categoryDto(data) });
+  }),
+);
 
-    res.status(201).json({ category });
+// Rename an exercise and/or change its icon. The slug never changes, so links and stored results stay valid.
+app.patch(
+  '/api/categories/:id',
+  wrap(async (req, res) => {
+    const existing = db.categories().find((c) => c.id === req.params.id);
+    if (!existing) throw new HttpError(404, 'Exercise not found.');
+
+    const patch = { updated_at: new Date().toISOString() };
+
+    if (req.body?.name !== undefined) {
+      const name = requireCategoryName(req.body.name);
+      const slug = slugifyCategoryName(name);
+      if (!slug) throw new HttpError(400, 'Exercise name must contain letters or numbers.');
+      const clash = db
+        .categories()
+        .some((c) => c.id !== existing.id && (c.slug === slug || c.name.toLowerCase() === name.toLowerCase()));
+      if (clash) throw new HttpError(409, `${name} already exists on the board.`);
+      patch.name = name;
+    }
+    if (req.body?.iconKey !== undefined) patch.icon_key = requireCategoryIcon(req.body.iconKey);
+    if (req.body?.description !== undefined) patch.description = String(req.body.description).slice(0, 200) || null;
+
+    const { data, error } = await supabase
+      .from('exercise_categories')
+      .update(patch)
+      .eq('id', existing.id)
+      .select()
+      .single();
+    if (error) throw new HttpError(400, error.message);
+
+    db.invalidate();
+    await syncFromSupabase();
+
+    res.json({ category: categoryDto(data) });
   }),
 );
 
@@ -289,11 +336,75 @@ app.patch(
   }),
 );
 
+/* ---------------------------------------------------------------- *
+ * Profile photos (Supabase Storage bucket "avatars", one JPEG per athlete)
+ * ---------------------------------------------------------------- */
+
+const AVATAR_BUCKET = 'avatars';
+const AVATAR_MAX_BYTES = 400 * 1024;
+const avatarPath = (userId) => `${userId}.jpg`;
+
+// id -> photo url, for everyone who has one; the clients draw initials for the rest.
+app.get('/api/avatars', (_req, res) => {
+  const avatars = {};
+  for (const u of db.users()) if (u.avatarUrl) avatars[u.id] = u.avatarUrl;
+  res.json({ avatars });
+});
+
+app.post(
+  '/api/users/:id/avatar',
+  wrap(async (req, res) => {
+    const existing = findUserOr404(req.params.id);
+    const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.image ?? ''));
+    if (!match) throw new HttpError(400, 'Send the photo as a JPEG data URL.');
+    const bytes = Buffer.from(match[1], 'base64');
+    if (bytes.length === 0 || bytes.length > AVATAR_MAX_BYTES) {
+      throw new HttpError(400, 'Photo is too large. Pick a smaller one.');
+    }
+
+    const path = avatarPath(existing.id);
+    const { error: upErr } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, bytes, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' });
+    if (upErr) throw new HttpError(400, upErr.message);
+
+    // Cache-busting suffix: the path is stable, the picture is not.
+    const avatarUrl = `${supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
+    const { error } = await supabase
+      .from('users')
+      .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+    if (error) throw new HttpError(400, error.message);
+
+    db.invalidate();
+    await syncFromSupabase();
+    res.json({ avatarUrl });
+  }),
+);
+
+app.delete(
+  '/api/users/:id/avatar',
+  wrap(async (req, res) => {
+    const existing = findUserOr404(req.params.id);
+    await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath(existing.id)]);
+    const { error } = await supabase
+      .from('users')
+      .update({ avatar_url: null, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+    if (error) throw new HttpError(400, error.message);
+
+    db.invalidate();
+    await syncFromSupabase();
+    res.json({ ok: true });
+  }),
+);
+
 app.delete(
   '/api/users/:id',
   wrap(async (req, res) => {
     const { error } = await supabase.from('users').delete().eq('id', req.params.id);
     if (error) throw new HttpError(400, error.message);
+    await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath(req.params.id)]); // best effort
     db.invalidate();
     await syncFromSupabase();
     res.json({ ok: true, ...meta() });

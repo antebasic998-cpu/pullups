@@ -13,10 +13,12 @@ const RING_C = 2 * Math.PI * RING_R;
 /** Avatar with a level-progress ring around it and a "LVL n" pill underneath. */
 export function LevelRing({
   name,
+  userId,
   level,
   ringBg,
 }: {
   name: string;
+  userId?: string;
   level: Level | null;
   /** Colour of the surface the ring sits on, used to cut the pill out of the ring. */
   ringBg?: string;
@@ -39,7 +41,7 @@ export function LevelRing({
           transform="rotate(-90 50 50)"
         />
       </Svg>
-      <Avatar name={name} size={74} />
+      <Avatar name={name} userId={userId} size={74} />
       {level ? (
         <View style={[styles.lvl, { backgroundColor: colors.accent, borderColor: ringBg ?? colors.surface }]}>
           <Text style={[styles.lvlText, { color: colors.accentInk }]}>LVL {level.level}</Text>

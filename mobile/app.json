@@ -28,6 +28,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Pull-Up Leaderboard to use your photos as athlete profile pictures."
+        }
+      ]
+    ]
   }
 }
