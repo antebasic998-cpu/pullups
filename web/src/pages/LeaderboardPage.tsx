@@ -103,10 +103,10 @@ export function LeaderboardPage() {
         <div className="fade-in" style={{ opacity: loading ? 0.55 : 1, transition: 'opacity 0.15s ease' }}>
           {hasRanked ? (
             <div className={`podium ${top.length === 1 ? 'podium-solo' : ''}`}>
-              {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={mode} to={profileLink(top[1])} /> : null}
-              <PodiumColumn row={top[0]} pos={1} mode={mode} to={profileLink(top[0])} />
+              {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={mode} to={profileLink(top[1])} onLog={quickLog} /> : null}
+              <PodiumColumn row={top[0]} pos={1} mode={mode} to={profileLink(top[0])} onLog={quickLog} />
               {top.length >= 3 ? (
-                <PodiumColumn row={top[2]} pos={3} mode={mode} to={profileLink(top[2])} />
+                <PodiumColumn row={top[2]} pos={3} mode={mode} to={profileLink(top[2])} onLog={quickLog} />
               ) : top.length === 2 ? (
                 <div className="pc pc-ghost" aria-hidden="true" />
               ) : null}
@@ -177,17 +177,42 @@ function figures(row: LeaderRow, mode: BoardMode): { value: string; suffix?: str
   }
 }
 
-function PodiumColumn({ row, pos, mode, to }: { row: LeaderRow; pos: 1 | 2 | 3; mode: BoardMode; to: string }) {
+function PodiumColumn({
+  row,
+  pos,
+  mode,
+  to,
+  onLog,
+}: {
+  row: LeaderRow;
+  pos: 1 | 2 | 3;
+  mode: BoardMode;
+  to: string;
+  onLog: (row: LeaderRow) => void;
+}) {
   const f = figures(row, mode);
   return (
-    <Link to={to} className={`pc p${pos}`} aria-label={`${row.name}, place ${row.rank ?? pos}`}>
+    <div className={`pc p${pos}`}>
+      {/* One link covers the whole column; the quick-log button sits above it. */}
+      <Link to={to} className="pc-hit" aria-label={`${row.name}, place ${row.rank ?? pos}`} />
       {pos === 1 ? (
         <span className="crown">
           <CrownIcon size={22} strokeWidth={2} fill="currentColor" />
         </span>
       ) : null}
-      <div className="avw">
-        <Avatar name={row.name} size={pos === 1 ? 76 : 60} />
+      <div className="avw-wrap">
+        <div className="avw">
+          <Avatar name={row.name} size={pos === 1 ? 76 : 60} />
+        </div>
+        <button
+          type="button"
+          className="pc-plus"
+          onClick={() => onLog(row)}
+          title={`Log result for ${row.name}`}
+          aria-label={`Log result for ${row.name}`}
+        >
+          <PlusIcon size={16} strokeWidth={3} />
+        </button>
       </div>
       <div className="pn">{row.name.trim().split(/\s+/)[0]}</div>
       <div className="ps">
@@ -197,7 +222,7 @@ function PodiumColumn({ row, pos, mode, to }: { row: LeaderRow; pos: 1 | 2 | 3; 
       <div className="ped">
         <b>{row.rank ?? pos}</b>
       </div>
-    </Link>
+    </div>
   );
 }
 

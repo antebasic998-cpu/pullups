@@ -147,10 +147,10 @@ export function LeaderboardScreen() {
         <View style={{ opacity: loading ? 0.55 : 1 }}>
           {hasRanked ? (
             <View style={styles.podium}>
-              {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={mode} onPress={openProfile} /> : null}
-              <PodiumColumn row={top[0]} pos={1} mode={mode} onPress={openProfile} solo={top.length === 1} />
+              {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={mode} onPress={openProfile} onLog={quickLog} /> : null}
+              <PodiumColumn row={top[0]} pos={1} mode={mode} onPress={openProfile} onLog={quickLog} solo={top.length === 1} />
               {top.length >= 3 ? (
-                <PodiumColumn row={top[2]} pos={3} mode={mode} onPress={openProfile} />
+                <PodiumColumn row={top[2]} pos={3} mode={mode} onPress={openProfile} onLog={quickLog} />
               ) : top.length === 2 ? (
                 <View style={{ flex: 1 }} />
               ) : null}
@@ -211,12 +211,14 @@ function PodiumColumn({
   pos,
   mode,
   onPress,
+  onLog,
   solo,
 }: {
   row: LeaderRow;
   pos: 1 | 2 | 3;
   mode: BoardMode;
   onPress: (row: LeaderRow) => void;
+  onLog: (row: LeaderRow) => void;
   solo?: boolean;
 }) {
   const { colors } = useTheme();
@@ -236,16 +238,28 @@ function PodiumColumn({
           <CrownIcon size={22} strokeWidth={2} color={colors.gold} fill={colors.gold} />
         </View>
       ) : null}
-      <View
-        style={[
-          styles.avw,
-          { backgroundColor: tint, borderRadius: (size + 6) / 2 },
-          pos === 1 && { shadowColor: colors.gold, shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
-        ]}
-      >
-        <View style={{ borderWidth: 3, borderColor: colors.bg, borderRadius: size / 2, overflow: 'hidden' }}>
-          <Avatar name={row.name} size={size - 6} />
+      {/* The padding gives the quick-log badge room inside this box (touches outside a parent are dropped); the negative margin keeps the layout unchanged. */}
+      <View style={styles.avBox}>
+        <View
+          style={[
+            styles.avw,
+            { backgroundColor: tint, borderRadius: (size + 6) / 2 },
+            pos === 1 && { shadowColor: colors.gold, shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+          ]}
+        >
+          <View style={{ borderWidth: 3, borderColor: colors.bg, borderRadius: size / 2, overflow: 'hidden' }}>
+            <Avatar name={row.name} size={size - 6} />
+          </View>
         </View>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => onLog(row)}
+          accessibilityLabel={`Log result for ${row.name}`}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          style={[styles.podPlus, { backgroundColor: colors.accent, borderColor: colors.bg }]}
+        >
+          <PlusIcon size={16} strokeWidth={3} color={colors.accentInk} />
+        </TouchableOpacity>
       </View>
       <Text style={[styles.pn, { color: colors.text }]} numberOfLines={1}>
         {firstName(row.name)}
@@ -421,7 +435,19 @@ const styles = StyleSheet.create({
   podium: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 8, marginTop: 20, marginBottom: 14 },
   pc: { alignItems: 'center' },
   crown: { marginBottom: 5 },
+  avBox: { padding: 8, margin: -8 },
   avw: { padding: 3 },
+  podPlus: {
+    position: 'absolute',
+    right: 2,
+    bottom: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    borderWidth: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pn: { marginTop: 9, fontWeight: '700', fontSize: 15 },
   ps: { fontWeight: '800', letterSpacing: -0.5, marginTop: 1, marginBottom: 9, fontVariant: ['tabular-nums'] },
   psUnit: { fontSize: 11, fontWeight: '600', letterSpacing: 0 },
