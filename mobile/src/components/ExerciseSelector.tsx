@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../lib/ThemeContext';
 import { db } from '../core/db';
-import { exerciseEmoji } from '../lib/categoryUtils';
+import { BarIcon, CheckIcon, ChevronDownIcon, XIcon } from './Icons';
 import type { ExerciseCategory } from '../types';
 
 interface ExerciseSelectorProps {
@@ -12,80 +12,53 @@ interface ExerciseSelectorProps {
   size?: 'compact' | 'normal';
 }
 
-function categoryIcon(category: ExerciseCategory): string {
-  return exerciseEmoji(category.iconKey, category.slug);
-}
-
-export function ExerciseSelector({
-  selected,
-  onSelect,
-  categories,
-  size = 'normal',
-}: ExerciseSelectorProps) {
+/** The exercise pill that sits top-right on Board / Awards / Profile, with a picker sheet. */
+export function ExerciseSelector({ selected, onSelect, categories, size = 'normal' }: ExerciseSelectorProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
 
   const available = categories && categories.length > 0 ? categories : db.categories();
   const activeCategory = selected ?? available[0] ?? db.defaultCategory();
-
-  const isCompact = size === 'compact';
+  const compact = size === 'compact';
 
   return (
     <>
       <TouchableOpacity
         onPress={() => setOpen(true)}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={`Exercise: ${activeCategory.name}`}
         style={[
           styles.trigger,
-          isCompact ? styles.triggerCompact : styles.triggerNormal,
-          {
-            backgroundColor: colors.surface2,
-            borderColor: colors.border,
-          },
+          compact && styles.triggerCompact,
+          { backgroundColor: colors.surface2, borderColor: colors.border },
         ]}
-        activeOpacity={0.7}
       >
-        <Text style={isCompact ? styles.iconCompact : styles.iconNormal}>
-          {categoryIcon(activeCategory)}
-        </Text>
-        <Text
-          style={[
-            isCompact ? styles.labelCompact : styles.labelNormal,
-            { color: colors.text },
-          ]}
-          numberOfLines={1}
-        >
+        <BarIcon size={compact ? 16 : 18} strokeWidth={2} color={colors.accent} />
+        <Text style={[styles.label, compact && { fontSize: 13 }, { color: colors.text }]} numberOfLines={1}>
           {activeCategory.name}
         </Text>
-        <Text style={[styles.caret, { color: colors.muted }]}>▼</Text>
+        <ChevronDownIcon size={15} strokeWidth={2.4} color={colors.muted} />
       </TouchableOpacity>
 
-      <Modal
-        visible={open}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpen(false)}
-      >
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={[styles.backdrop, { backgroundColor: colors.overlay }]} onPress={() => setOpen(false)}>
           <Pressable
-            style={[
-              styles.sheet,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
+            style={[styles.sheet, { backgroundColor: colors.sheet, borderColor: colors.border }]}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetTitle, { color: colors.text }]}>
-                Select Exercise
-              </Text>
-              <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn}>
-                <Text style={{ color: colors.muted, fontSize: 16 }}>✕</Text>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Exercise</Text>
+              <TouchableOpacity
+                onPress={() => setOpen(false)}
+                accessibilityLabel="Close"
+                style={[styles.closeBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]}
+              >
+                <XIcon size={18} strokeWidth={2.2} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.list}>
+            <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {available.map((cat, idx) => {
                 const isSelected = cat.id === activeCategory.id || cat.slug === activeCategory.slug;
                 return (
@@ -95,31 +68,22 @@ export function ExerciseSelector({
                       onSelect(cat);
                       setOpen(false);
                     }}
+                    activeOpacity={0.7}
                     style={[
                       styles.item,
                       idx > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
                       isSelected && { backgroundColor: colors.surface2 },
                     ]}
                   >
-                    <Text style={styles.itemIcon}>{categoryIcon(cat)}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={[
-                          styles.itemName,
-                          { color: isSelected ? colors.accent : colors.text },
-                        ]}
-                      >
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[styles.itemName, { color: isSelected ? colors.accent : colors.text }]}>
                         {cat.name}
                       </Text>
                       <Text style={[styles.itemSub, { color: colors.muted }]}>
-                        {cat.scoreType === 'bodyweight_normalized'
-                          ? `Bodyweight-normalized · ${cat.unit}`
-                          : cat.unit}
+                        {cat.scoreType === 'bodyweight_normalized' ? `Bodyweight-normalized · ${cat.unit}` : cat.unit}
                       </Text>
                     </View>
-                    {isSelected ? (
-                      <Text style={[styles.checkmark, { color: colors.accent }]}>✓</Text>
-                    ) : null}
+                    {isSelected ? <CheckIcon size={18} strokeWidth={2.6} color={colors.accent} /> : null}
                   </TouchableOpacity>
                 );
               })}
@@ -135,96 +99,33 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-  },
-  triggerNormal: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
     gap: 8,
+    height: 40,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    maxWidth: 200,
   },
-  triggerCompact: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 6,
-  },
-  iconNormal: {
-    fontSize: 18,
-  },
-  iconCompact: {
-    fontSize: 14,
-  },
-  labelNormal: {
-    fontSize: 15,
-    fontWeight: '700',
-    flex: 1,
-  },
-  labelCompact: {
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
-  },
-  caret: {
-    fontSize: 11,
-    marginLeft: 4,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
+  triggerCompact: { height: 36, paddingHorizontal: 10, gap: 6, borderRadius: 12 },
+  label: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
+  backdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   sheet: {
     width: '100%',
     maxWidth: 380,
-    borderRadius: 18,
+    borderRadius: 26,
     borderWidth: 1,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  sheetTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  closeBtn: {
-    padding: 6,
-  },
-  list: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    gap: 12,
-  },
-  itemIcon: {
-    fontSize: 22,
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  itemSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  checkmark: {
-    fontSize: 17,
-    fontWeight: '800',
-  },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4, paddingLeft: 2 },
+  closeBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 12 },
+  itemName: { fontSize: 15, fontWeight: '700' },
+  itemSub: { fontSize: 12, marginTop: 2 },
 });

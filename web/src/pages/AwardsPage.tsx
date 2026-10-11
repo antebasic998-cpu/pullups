@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAsync } from '../lib/hooks';
 import { useDataVersion } from '../lib/store';
-import { formatDate, pluralize } from '../lib/format';
-import { Avatar, EmptyState } from '../components/Bits';
+import { formatWeekRange, pluralize } from '../lib/format';
+import { Avatar, EmptyState, PageHeader } from '../components/Bits';
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { FlameIcon, InfoIcon, TrophyIcon } from '../components/Icons';
 import type { Award, ExerciseCategory } from '../types';
@@ -16,6 +16,8 @@ const TIER_COLOR: Record<string, string> = {
   legend: 'var(--accent)',
 };
 
+const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
+
 export function AwardsPage() {
   const version = useDataVersion();
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
@@ -24,43 +26,35 @@ export function AwardsPage() {
     [version, selectedCategory?.slug],
   );
   const exerciseLabel = data?.category?.name ?? selectedCategory?.name ?? 'this exercise';
+  const topXp = data?.xpThisWeek[0]?.xp || 1;
 
   return (
     <div className="shell">
-      <header className="mb-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="m-0 text-xl font-semibold tracking-tight">Office awards</h1>
-          <ExerciseSelector
-            selected={selectedCategory}
-            onSelect={setSelectedCategory}
-            loading={loading}
-            compact
-          />
-        </div>
-        <p className="m-0 mt-1 text-sm muted">
-          {data && data.userCount > 0 ? (
-            <>
-              {exerciseLabel} · week of {formatDate(data.week.start)} to {formatDate(data.week.end)} ·{' '}
-              {data.participants} of {pluralize(data.userCount, 'athlete')} logged a result
-            </>
-          ) : data ? (
-            'Add athletes to start handing out prizes'
-          ) : (
-            'Fresh prizes every week'
-          )}
-        </p>
-      </header>
+      <PageHeader
+        eyebrow={data ? formatWeekRange(data.week.start, data.week.end) : 'This week'}
+        title="Awards"
+        right={
+          <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} loading={loading} compact />
+        }
+      />
+      <p className="blurb">
+        {data && data.userCount > 0
+          ? `${exerciseLabel} · ${data.participants} of ${pluralize(data.userCount, 'athlete')} logged a result · resets Monday`
+          : data
+            ? 'Add athletes to start handing out prizes'
+            : 'Fresh prizes every week'}
+      </p>
 
       {error ? <p className="error-text">{error}</p> : null}
 
       {loading && !data ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="agrid" aria-busy="true">
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="skeleton" style={{ height: 96 }} />
+            <div key={i} className="skeleton" style={{ height: 132, borderRadius: 20 }} />
           ))}
         </div>
       ) : data ? (
-        <>
+        <div className="fade-in" style={{ opacity: loading ? 0.55 : 1, transition: 'opacity 0.15s ease' }}>
           {data.participants === 0 ? (
             <EmptyState
               title="Nothing to award yet this week"
@@ -69,140 +63,88 @@ export function AwardsPage() {
           ) : null}
 
           {/* This week's prizes */}
-          <section className="mb-6 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="agrid" aria-label="This week's prizes">
             {data.awards.map((award) => (
               <AwardCard key={award.id} award={award} />
             ))}
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* XP race */}
-            <section className="panel">
-              <div className="flex items-center justify-between px-4 py-3">
-                <h2 className="m-0 section-title">XP this week</h2>
-                <span className="text-xs faint" title={`${data.xpRules.perRep} XP per rep, plus bonuses for PBs and podiums`}>
-                  1 XP per rep + bonuses
-                </span>
-              </div>
-              {data.xpThisWeek.length === 0 ? (
-                <p className="m-0 border-t px-4 py-4 text-sm muted" style={{ borderColor: 'var(--border)' }}>
-                  No XP earned yet this week.
-                </p>
-              ) : (
-                data.xpThisWeek.map((row) => {
-                  const top = data.xpThisWeek[0].xp || 1;
-                  return (
-                    <div
-                      key={row.userId}
-                      className="row roster-cols"
-                      style={{ gridTemplateColumns: 'minmax(0, 1fr) 4rem auto' }}
-                    >
-                      <Link
-                        to={`/users/${row.userId}`}
-                        className="flex min-w-0 items-center gap-2.5 no-underline"
-                        style={{ color: 'inherit' }}
-                      >
-                        <Avatar name={row.name} />
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium">{row.name}</span>
-                          <span className="block h-1 w-24 overflow-hidden rounded-full" style={{ background: 'var(--surface-3)' }}>
-                            <span
-                              className="block h-full rounded-full"
-                              style={{ width: `${Math.round((row.xp / top) * 100)}%`, background: 'var(--accent)' }}
-                            />
-                          </span>
-                        </span>
-                      </Link>
-                      <span className="num text-right font-semibold">{row.xp}</span>
-                      <span className="text-right text-xs muted">
-                        {row.sessions} {row.sessions === 1 ? 'session' : 'sessions'}
-                      </span>
+          {/* XP race */}
+          <section className="a-card">
+            <div className="card-head">
+              <h3>XP this week</h3>
+              <small title={`${data.xpRules.perRep} XP per rep, plus bonuses for PBs and podiums`}>
+                1 XP per rep + bonuses
+              </small>
+            </div>
+            {data.xpThisWeek.length === 0 ? (
+              <p className="m-0 text-sm muted">No XP earned yet this week.</p>
+            ) : (
+              data.xpThisWeek.map((row) => (
+                <Link key={row.userId} to={`/users/${row.userId}`} className="xr">
+                  <Avatar name={row.name} size={36} />
+                  <div className="m">
+                    <b>{firstName(row.name)}</b>
+                    <div className="tr">
+                      <i style={{ width: `${Math.round((row.xp / topXp) * 100)}%` }} />
                     </div>
-                  );
-                })
-              )}
-            </section>
+                  </div>
+                  <span className="n">{row.xp}</span>
+                </Link>
+              ))
+            )}
+          </section>
 
-            {/* All-time XP / levels */}
-            <section className="panel">
-              <div className="flex items-center justify-between px-4 py-3">
-                <h2 className="m-0 section-title">Levels</h2>
-                <span className="text-xs faint">XP never changes your score</span>
-              </div>
-              {data.leaderboard.length === 0 ? (
-                <p className="m-0 border-t px-4 py-4 text-sm muted" style={{ borderColor: 'var(--border)' }}>
-                  No athletes yet.
-                </p>
-              ) : (
-                data.leaderboard.map((row) => (
-                  <Link
-                    key={row.id}
-                    to={`/users/${row.id}`}
-                    className="row"
-                    style={{ gridTemplateColumns: 'minmax(0, 1fr) auto auto' }}
-                  >
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <Avatar name={row.name} />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{row.name}</span>
-                        <span className="block truncate text-xs muted">
-                          Level {row.level.level} · {row.level.title}
-                        </span>
-                      </span>
-                    </span>
-                    <span className="num text-right text-sm">
-                      {row.xp}
-                      <span className="faint text-xs"> XP</span>
-                    </span>
-                    <span className="text-right text-xs" style={{ color: 'var(--muted)' }}>
-                      {row.level.isMax ? 'maxed' : `${row.level.xpToNext} to next`}
-                    </span>
-                  </Link>
-                ))
-              )}
-            </section>
-          </div>
+          {/* All-time XP / levels */}
+          <section className="a-card">
+            <div className="card-head">
+              <h3>Levels</h3>
+              <small>XP never changes your score</small>
+            </div>
+            {data.leaderboard.length === 0 ? (
+              <p className="m-0 text-sm muted">No athletes yet.</p>
+            ) : (
+              data.leaderboard.map((row) => (
+                <Link key={row.id} to={`/users/${row.id}`} className="xr">
+                  <Avatar name={row.name} size={36} />
+                  <div className="m">
+                    <b>{row.name}</b> <span>· {row.level.title}</span>
+                    <div className="tr gold">
+                      <i style={{ width: `${row.level.progress}%` }} />
+                    </div>
+                  </div>
+                  <span className="lv">L{row.level.level}</span>
+                </Link>
+              ))
+            )}
+          </section>
 
           {/* Badge wall */}
-          <section className="panel mt-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <h2 className="m-0 section-title">All badges</h2>
-              <span className="text-xs faint">Grey ones are still up for grabs</span>
+          <section className="a-card">
+            <div className="card-head">
+              <h3>All badges</h3>
+              <small>Grey ones are still up for grabs</small>
             </div>
-            <div
-              className="grid gap-2 border-t px-4 py-3.5 sm:grid-cols-2 lg:grid-cols-3"
-              style={{ borderColor: 'var(--border)' }}
-            >
+            <div className="badge-wall">
               {data.badges.map((badge) => (
                 <div
                   key={badge.id}
-                  className="flex items-start gap-2.5 rounded-xl border px-2.5 py-2"
-                  style={{
-                    borderColor: badge.holders > 0 ? 'var(--border)' : 'var(--border)',
-                    borderStyle: badge.holders > 0 ? 'solid' : 'dashed',
-                    background: badge.holders > 0 ? 'var(--surface-2)' : 'transparent',
-                    opacity: badge.holders > 0 ? 1 : 0.6,
-                  }}
+                  className={badge.holders > 0 ? '' : 'none'}
+                  style={{ '--t': TIER_COLOR[badge.tier] } as CSSProperties}
                   title={badge.how}
                 >
-                  <span
-                    className="flex size-7 flex-none items-center justify-center rounded-lg text-sm"
-                    style={{
-                      border: `1px solid ${badge.holders > 0 ? TIER_COLOR[badge.tier] : 'var(--border)'}`,
-                      background: badge.holders > 0 ? 'var(--surface)' : 'transparent',
-                      filter: badge.holders > 0 ? 'none' : 'grayscale(1)',
-                    }}
-                    aria-hidden="true"
-                  >
+                  <span className="bi" aria-hidden="true">
                     {badge.emoji}
                   </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-medium">{badge.name}</span>
-                    <span className="block truncate text-[0.7rem] faint">
+                  <span>
+                    <b>{badge.name}</b>
+                    <small>
                       {badge.holders === 0
                         ? badge.how
-                        : `${badge.names.length <= 3 ? badge.names.join(', ') : `${badge.names.slice(0, 2).join(', ')} +${badge.names.length - 2}`}`}
-                    </span>
+                        : badge.names.length <= 3
+                          ? badge.names.join(', ')
+                          : `${badge.names.slice(0, 2).join(', ')} +${badge.names.length - 2}`}
+                    </small>
                   </span>
                 </div>
               ))}
@@ -210,14 +152,14 @@ export function AwardsPage() {
           </section>
 
           {/* How it works */}
-          <section className="card mt-4 px-4 py-3.5">
-            <h2 className="m-0 flex items-center gap-2 section-title">
-              <InfoIcon size={13} />
+          <section className="a-card">
+            <h3 className="m-0 flex items-center gap-2 text-[15px] font-bold">
+              <InfoIcon size={15} />
               How XP works
-            </h2>
-            <ul className="m-0 mt-2 flex list-none flex-col gap-1 p-0 text-xs muted">
+            </h3>
+            <ul className="m-0 mt-3 flex list-none flex-col gap-1.5 p-0 text-[13px] muted">
               <li>
-                <span className="num">{data.xpRules.perRep} XP</span> for every pull-up you complete.
+                <span className="num">{data.xpRules.perRep} XP</span> for every {exerciseLabel.toLowerCase()} rep you complete.
               </li>
               <li>
                 <span className="num">+{data.xpRules.newAbsolutePb} XP</span> for a new personal best,{' '}
@@ -237,47 +179,44 @@ export function AwardsPage() {
             </div>
           </section>
 
-          <p className="mt-3 text-xs faint">
+          <p className="foot">
             Prizes are recalculated from the week's results every time you open this page — no voting, no
             arguments. <TrophyIcon size={11} className="inline" /> Badges unlock once and stay on your profile.
             <FlameIcon size={11} className="ml-1 inline" /> Streaks survive until a full week passes without a
             result.
           </p>
-        </>
+        </div>
       ) : null}
     </div>
   );
 }
 
 function AwardCard({ award }: { award: Award }) {
-  const won = Boolean(award.winner);
-  return (
-    <div
-      className="card flex flex-col gap-1.5 px-3.5 py-3"
-      style={{
-        borderStyle: won ? 'solid' : 'dashed',
-        background: won ? 'var(--surface-2)' : 'transparent',
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-base" aria-hidden="true" style={{ filter: won ? 'none' : 'grayscale(1)' }}>
+  const w = award.winner;
+  if (!w) {
+    return (
+      <div className="aw no">
+        <span className="e" aria-hidden="true">
           {award.emoji}
         </span>
-        <span className="text-sm font-semibold">{award.title}</span>
+        <h4>{award.title}</h4>
+        <p>{award.how}</p>
       </div>
-
-      {award.winner ? (
-        <Link
-          to={`/users/${award.winner.userId}`}
-          className="flex items-center justify-between gap-2 no-underline"
-          style={{ color: 'inherit' }}
-        >
-          <span className="min-w-0 truncate text-sm">{award.winner.name}</span>
-          <span className="num flex-none text-xs muted">{award.winner.detail}</span>
-        </Link>
-      ) : (
-        <span className="text-xs faint">{award.how}</span>
-      )}
+    );
+  }
+  return (
+    <div className="aw">
+      <span className="e" aria-hidden="true">
+        {award.emoji}
+      </span>
+      <h4>{award.title}</h4>
+      <Link to={`/users/${w.userId}`} className="w">
+        <Avatar name={w.name} size={30} />
+        <div>
+          <b>{firstName(w.name)}</b>
+          <small>{w.detail}</small>
+        </div>
+      </Link>
     </div>
   );
 }

@@ -1,19 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { useAsync } from '../lib/hooks';
 import { invalidate, useDataVersion } from '../lib/store';
-import { daysAgo, formatDate, formatKg, formatScore } from '../lib/format';
-import { Avatar, EmptyState, Metric } from '../components/Bits';
-import { BadgeTile, LevelCard } from '../components/Game';
+import { useLogSheet } from '../lib/LogSheet';
+import { daysAgo, formatDate, formatDateShort, formatKg } from '../lib/format';
+import { EmptyState } from '../components/Bits';
+import { BadgeMedal, LevelRing, XpProgress } from '../components/Game';
 import { ScoreChart, type ChartPoint } from '../components/ScoreChart';
 import { ConfirmDialog } from '../components/Modal';
-import { AttemptFormModal } from '../components/AttemptFormModal';
 import { ImportModal } from '../components/ImportModal';
 import { UserFormModal } from '../components/UserFormModal';
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { useToast } from '../components/Toast';
-import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '../components/Icons';
+import { ChevronLeftIcon, MoreIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '../components/Icons';
 import type { Board, ExerciseCategory, UserResponse } from '../types';
 
 type Series = 'normalized' | 'absolute' | 'weight';
@@ -26,6 +26,7 @@ export function UserDetailPage() {
   const version = useDataVersion();
   const toast = useToast();
   const navigate = useNavigate();
+  const log = useLogSheet();
 
   const handleCategorySelect = (cat: ExerciseCategory) => {
     setSelectedCategory(cat);
@@ -45,11 +46,26 @@ export function UserDetailPage() {
   );
 
   const [series, setSeries] = useState<Series>('normalized');
-  const [logOpen, setLogOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const moreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMoreOpen(false);
+    document.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [moreOpen]);
 
   const user = data?.user.user;
   const normRank = data?.board.rows.find((r) => r.id === id)?.rank ?? null;
@@ -69,6 +85,25 @@ export function UserDetailPage() {
   const history = useMemo(() => (user ? [...user.sessions].reverse() : []), [user]);
   const [showAll, setShowAll] = useState(false);
   const visibleHistory = showAll ? history : history.slice(0, 8);
+
+  /** Sessions that were a new best for the athlete at the time (reps above everything before). */
+  const pbIds = useMemo(() => {
+    const ids = new Set<string>();
+    let best = 0;
+    let first = true;
+    if (!user) return ids;
+    for (const s of user.sessions) {
+      if (!first && s.reps > best) ids.add(s.id);
+      if (s.reps > best) best = s.reps;
+      first = false;
+    }
+    return ids;
+  }, [user]);
+
+  const badges = useMemo(
+    () => (user ? [...user.badges].sort((a, b) => Number(b.unlocked) - Number(a.unlocked)) : []),
+    [user],
+  );
 
   async function removeAttempt(attemptId: string) {
     try {
@@ -95,12 +130,15 @@ export function UserDetailPage() {
     }
   }
 
+  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/'));
+
   if (loading && !data) {
     return (
-      <div className="shell flex flex-col gap-4">
-        <div className="skeleton" style={{ height: 90 }} />
-        <div className="skeleton" style={{ height: 220 }} />
-        <div className="skeleton" style={{ height: 260 }} />
+      <div className="shell" aria-busy="true">
+        <div className="skeleton" style={{ height: 40, width: 40, borderRadius: 14 }} />
+        <div className="skeleton" style={{ height: 230, marginTop: 14, borderRadius: 26 }} />
+        <div className="skeleton" style={{ height: 50, marginTop: 14, borderRadius: 16 }} />
+        <div className="skeleton" style={{ height: 180, marginTop: 14, borderRadius: 22 }} />
       </div>
     );
   }
@@ -122,244 +160,231 @@ export function UserDetailPage() {
   }
 
   const medianKg = data.user.medianMassKg;
+  const exerciseName = selectedCategory?.name ?? 'Pull-ups';
   const seriesMeta: Record<Series, { unit: string; decimals: number; color: string }> = {
     normalized: { unit: 'pts', decimals: 2, color: 'var(--accent)' },
     absolute: { unit: 'reps', decimals: 0, color: 'var(--text)' },
     weight: { unit: 'kg', decimals: 1, color: 'var(--muted)' },
   };
   const active = seriesMeta[series];
+  const noData = user.sessionCount === 0;
 
   return (
     <div className="shell">
-      <Link to="/users" className="mb-4 inline-flex items-center gap-1.5 text-sm no-underline muted">
-        <ArrowLeftIcon size={14} />
-        Athletes
-      </Link>
+      {/* Top bar */}
+      <div className="p-bar">
+        <button type="button" className="ib" onClick={goBack} aria-label="Back">
+          <ChevronLeftIcon size={20} strokeWidth={2.2} />
+        </button>
 
-      {/* Who they are */}
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={user.name} size={44} />
-          <div className="min-w-0 flex-1">
-            <h1 className="m-0 break-words text-xl font-semibold tracking-tight">{user.name}</h1>
-            <p className="m-0 mt-0.5 text-xs muted">
-              {[
-                user.age ? `${user.age} years` : null,
-                formatKg(user.weightKg),
-                `×${user.multiplier.toFixed(2)} mass`,
-                normRank ? `rank #${normRank} of ${total}` : null,
-                user.level ? `${user.xp} XP` : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-          </div>
-        </div>
+        <ExerciseSelector
+          selected={selectedCategory}
+          onSelect={handleCategorySelect}
+          loading={loading}
+          initialSlug={categorySlug}
+          fallback={<h2>Profile</h2>}
+        />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <ExerciseSelector
-            selected={selectedCategory}
-            onSelect={handleCategorySelect}
-            loading={loading}
-            initialSlug={categorySlug}
-            compact
-          />
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setLogOpen(true)}>
-            <PlusIcon size={14} />
-            Log result
-          </button>
-          <button type="button" className="icon-btn" title="Import CSV history" aria-label="Import" onClick={() => setImportOpen(true)}>
-            <UploadIcon size={15} />
-          </button>
-          <button type="button" className="icon-btn" title="Edit" aria-label="Edit" onClick={() => setEditOpen(true)}>
-            <PencilIcon size={15} />
-          </button>
+        <div className="more-wrap" ref={moreRef}>
           <button
             type="button"
-            className="icon-btn"
-            title="Remove"
-            aria-label="Remove"
-            onClick={() => setDeleteOpen(true)}
-            style={{ color: 'var(--danger)' }}
+            className="ib"
+            aria-label="More"
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((v) => !v)}
           >
-            <TrashIcon size={15} />
+            <MoreIcon size={20} />
+          </button>
+          {moreOpen ? (
+            <div className="ex-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                style={{ color: 'var(--danger)' }}
+                onClick={() => {
+                  setMoreOpen(false);
+                  setDeleteOpen(true);
+                }}
+              >
+                <TrashIcon size={17} strokeWidth={2} />
+                <span>Remove athlete</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s ease', pointerEvents: loading ? 'none' : 'auto' }}>
+        {/* Hero */}
+        <section className="hero">
+          <div className="hero-top">
+            <LevelRing name={user.name} level={user.level} />
+            <div className="hero-name">
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.15, overflowWrap: 'anywhere' }}>
+                {user.name}
+              </h1>
+              <div className="tags">
+                {user.age ? <span className="tag">{user.age} y</span> : null}
+                <span className="tag">{formatKg(user.weightKg)}</span>
+                <span className="tag">×{user.multiplier.toFixed(2)}</span>
+                {normRank ? <span className="tag gold">Rank #{normRank} of {total}</span> : null}
+              </div>
+            </div>
+          </div>
+          {user.level ? <XpProgress level={user.level} streaks={user.streaks} /> : null}
+        </section>
+
+        {/* Actions */}
+        <div className="acts">
+          <button type="button" className="big-btn" onClick={() => log.open({ userId: user.id, category: selectedCategory })}>
+            <PlusIcon size={20} strokeWidth={2.6} />
+            Log {exerciseName}
+          </button>
+          <button type="button" className="sq-btn" title="Import CSV history" aria-label="Import" onClick={() => setImportOpen(true)}>
+            <UploadIcon size={20} strokeWidth={2} />
+          </button>
+          <button type="button" className="sq-btn" title="Edit" aria-label="Edit" onClick={() => setEditOpen(true)}>
+            <PencilIcon size={19} strokeWidth={2} />
           </button>
         </div>
-      </header>
-
-      {loading && (
-        <div className="mb-3 flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] py-2 text-xs font-medium muted fade-in">
-          <span
-            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
-            aria-hidden="true"
-          />
-          <span>Updating for {selectedCategory?.name ?? 'category'}...</span>
-        </div>
-      )}
-
-      {/* Level + streak */}
-      <div style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.2s ease', pointerEvents: loading ? 'none' : 'auto' }}>
-        {user.level ? (
-          <section className="mb-3">
-            <LevelCard level={user.level} streaks={user.streaks} />
-          </section>
-        ) : null}
 
         {/* Career numbers */}
-        <section className="card mb-4 grid grid-cols-2 gap-4 px-4 py-3.5 sm:grid-cols-5">
-          <Metric
-            label="Normalized PB"
-            accent={user.sessionCount > 0}
-            value={user.sessionCount ? formatScore(user.pbNormalized) : '–'}
-          />
-          <Metric label={`PB ${selectedCategory?.name ?? 'reps'}`} value={user.sessionCount ? user.pbAbsolute : '–'} />
-          <Metric label="Total reps" value={user.totalReps} />
-          <Metric label="Sessions" value={user.sessionCount} />
-          <Metric
-            label="Since first result"
-            value={user.improvement === null ? '–' : `${user.improvement > 0 ? '+' : ''}${user.improvement}%`}
-          />
+        <section className="stats" aria-label="Career numbers">
+          <div className="st hi">
+            <b>{noData ? '–' : user.pbNormalized.toFixed(2)}</b>
+            <span>Normalized PB</span>
+          </div>
+          <div className="st">
+            <b>{noData ? '–' : user.pbAbsolute}</b>
+            <span>PB {exerciseName.toLowerCase()}</span>
+          </div>
+          <div className="st">
+            <b>{user.totalReps}</b>
+            <span>Total reps</span>
+          </div>
+          <div className="st">
+            <b>{user.sessionCount}</b>
+            <span>Sessions</span>
+          </div>
+          <div className="st">
+            <b>{user.improvement === null ? '–' : `${user.improvement > 0 ? '+' : ''}${user.improvement}%`}</b>
+            <span>Since first</span>
+          </div>
+          <div className="st">
+            <b>{user.lastResult?.date ? formatDateShort(user.lastResult.date) : '–'}</b>
+            <span>Last logged</span>
+          </div>
         </section>
 
         {/* Progress */}
-        <section className="card mb-4 px-4 py-3.5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="m-0 section-title">Progress</h2>
-            <div className="seg" role="tablist" aria-label="Chart series">
-              {(
-                [
-                  ['normalized', 'Normalized'],
-                  ['absolute', 'Reps'],
-                  ['weight', 'Bodyweight'],
-                ] as [Series, string][]
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={series === key}
-                  data-active={series === key}
-                  className="seg-item"
-                  onClick={() => setSeries(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+        <section className="a-card">
+          <div className="card-head">
+            <h3>Progress</h3>
+            <small>{exerciseName}</small>
           </div>
-
+          <div className="seg" role="tablist" aria-label="Chart series" style={{ marginBottom: 8 }}>
+            {(
+              [
+                ['normalized', 'Normalized'],
+                ['absolute', exerciseName],
+                ['weight', 'Bodyweight'],
+              ] as [Series, string][]
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={series === key}
+                data-active={series === key}
+                className="seg-item"
+                onClick={() => setSeries(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <ScoreChart
             points={chartPoints}
             unit={active.unit}
             decimals={active.decimals}
             color={active.color}
-            height={240}
+            height={210}
             emptyMessage="No attempts yet."
           />
         </section>
 
         {/* Badges */}
-        <section className="panel mb-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <h2 className="m-0 section-title">Badges</h2>
-            <span className="text-xs faint">
+        <section className="a-card">
+          <div className="card-head">
+            <h3>Badges</h3>
+            <small>
               {user.unlockedBadgeCount} of {user.badges.length} unlocked
-            </span>
+            </small>
           </div>
-          <div
-            className="grid gap-2 border-t px-4 py-3.5 sm:grid-cols-2 lg:grid-cols-3"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            {user.badges.map((badge) => (
-              <BadgeTile key={badge.id} badge={badge} />
+          <div className="badges-row hs">
+            {badges.map((badge) => (
+              <BadgeMedal key={badge.id} badge={badge} />
             ))}
           </div>
         </section>
 
         {/* History */}
-        <section className="panel">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <h2 className="m-0 section-title">History</h2>
-            <span className="text-xs faint">
-              {user.sessionCount > 0 ? `last logged ${daysAgo(user.lastResult?.date)}` : 'nothing logged yet'}
-            </span>
+        <section className="a-card">
+          <div className="card-head">
+            <h3>History</h3>
+            <small>{user.sessionCount > 0 ? `last logged ${daysAgo(user.lastResult?.date)}` : 'nothing logged yet'}</small>
           </div>
 
           {history.length === 0 ? (
-            <div className="border-t px-4 py-8 text-center text-sm muted" style={{ borderColor: 'var(--border)' }}>
-              No {selectedCategory?.name?.toLowerCase() ?? 'results'} logged yet for {user.name}.
-            </div>
+            <p className="m-0 py-4 text-center text-sm muted">
+              No {exerciseName.toLowerCase()} logged yet for {user.name}.
+            </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm" style={{ minWidth: 440 }}>
-                <thead>
-                  <tr className="text-xs faint">
-                    <th className="px-4 py-2 text-left font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                      Date
-                    </th>
-                    <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                      Reps
-                    </th>
-                    <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                      Weight
-                    </th>
-                    <th className="px-4 py-2 text-right font-medium" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                      Normalized
-                    </th>
-                    <th className="w-10" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleHistory.map((s) => (
-                    <tr key={s.id} className="group" style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td className="px-4 py-2.5 num">
-                        {formatDate(s.date)}
-                        {s.note ? <div className="text-xs faint">{s.note}</div> : null}
-                      </td>
-                      <td className="px-4 py-2.5 text-right num">{s.reps}</td>
-                      <td className="px-4 py-2.5 text-right num muted">{formatKg(s.weightKg)}</td>
-                      <td className="px-4 py-2.5 text-right num font-medium" style={{ color: 'var(--accent)' }}>
-                        {formatScore(s.normalized)}
-                      </td>
-                      <td className="px-2 py-2.5 text-right">
-                        <button
-                          type="button"
-                          className="icon-btn opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                          title="Delete this result"
-                          aria-label="Delete this result"
-                          onClick={() => void removeAttempt(s.id)}
-                        >
-                          <TrashIcon size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div>
+              <div className="hist-row h">
+                <span>Date</span>
+                <span>Reps</span>
+                <span>Weight</span>
+                <span>Score</span>
+                <span />
+              </div>
+              {visibleHistory.map((s) => (
+                <div key={s.id} className="hist-row">
+                  <span>
+                    {formatDateShort(s.date)}
+                    {pbIds.has(s.id) ? <i className="pbt">PB</i> : null}
+                    {s.note ? <small>{s.note}</small> : null}
+                  </span>
+                  <span>{s.reps}</span>
+                  <span>{formatKg(s.weightKg)}</span>
+                  <span className="sc">{s.normalized.toFixed(2)}</span>
+                  <button
+                    type="button"
+                    className="del"
+                    title={`Delete the result from ${formatDate(s.date)}`}
+                    aria-label={`Delete the result from ${formatDate(s.date)}`}
+                    onClick={() => void removeAttempt(s.id)}
+                  >
+                    <TrashIcon size={15} strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
           {history.length > 8 ? (
-            <div className="border-t px-4 py-2.5" style={{ borderColor: 'var(--border)' }}>
-              <button type="button" className="btn btn-sm btn-quiet" onClick={() => setShowAll((v) => !v)}>
-                {showAll ? 'Show less' : `Show all ${history.length}`}
-              </button>
-            </div>
+            <button type="button" className="link-btn" onClick={() => setShowAll((v) => !v)}>
+              {showAll ? 'Show less' : `Show all ${history.length}`}
+            </button>
           ) : null}
         </section>
 
-        <p className="mt-3 text-xs faint">
+        <p className="foot">
           Normalized uses the bodyweight recorded on the day, against the office median of {formatKg(medianKg)}.
         </p>
       </div>
 
-      <AttemptFormModal
-        open={logOpen}
-        user={user}
-        medianMassKg={medianKg}
-        category={selectedCategory}
-        onClose={() => setLogOpen(false)}
-      />
       <UserFormModal open={editOpen} user={user} onClose={() => setEditOpen(false)} />
       <ImportModal
         open={importOpen}

@@ -14,17 +14,38 @@ export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontSize: size * 0.38, fontWeight: '700', color: '#14161a' }}>{initials(name)}</Text>
+      <Text
+        allowFontScaling={false}
+        style={{ fontSize: Math.round(size * 0.38), fontWeight: '800', color: '#0b0c0e', letterSpacing: -0.3 }}
+      >
+        {initials(name)}
+      </Text>
     </View>
   );
 }
 
-export function Metric({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+/** Eyebrow + big title on the left, an optional control (usually the exercise pill) on the right. */
+export function PageHeader({
+  eyebrow,
+  title,
+  right,
+}: {
+  eyebrow?: string;
+  title: string;
+  right?: React.ReactNode;
+}) {
   const { colors } = useTheme();
   return (
-    <View style={styles.metric}>
-      <Text style={[styles.metricValue, { color: accent ? colors.accent : colors.text }]}>{value}</Text>
-      <Text style={[styles.metricLabel, { color: colors.faint }]}>{label}</Text>
+    <View style={styles.pageTop}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        {eyebrow ? (
+          <Text style={[styles.eyebrow, { color: colors.muted }]} numberOfLines={1}>
+            {eyebrow}
+          </Text>
+        ) : null}
+        <Text style={[styles.pageTitle, { color: colors.text }]}>{title}</Text>
+      </View>
+      {right}
     </View>
   );
 }
@@ -66,6 +87,21 @@ export function Card({ children, style }: { children: React.ReactNode; style?: V
   );
 }
 
+/** Card heading: bold title on the left, quiet caption on the right. */
+export function CardHead({ title, caption }: { title: string; caption?: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.cardHead}>
+      <Text style={[styles.cardTitle, { color: colors.text }]}>{title}</Text>
+      {caption ? (
+        <Text style={[styles.cardCaption, { color: colors.muted }]} numberOfLines={1}>
+          {caption}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   return <Text style={[styles.sectionTitle, { color: colors.text }]}>{children}</Text>;
@@ -73,30 +109,33 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export function Muted({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
   const { colors } = useTheme();
-  return <Text style={[{ color: colors.muted, fontSize: 13 }, style]}>{children}</Text>;
+  return <Text style={[{ color: colors.muted, fontSize: 12.5, lineHeight: 18 }, style]}>{children}</Text>;
 }
 
-export function Skeleton({ height = 46 }: { height?: number }) {
+export function Skeleton({ height = 46, style }: { height?: number; style?: ViewStyle }) {
   const { colors } = useTheme();
-  return <View style={[styles.skeleton, { height, backgroundColor: colors.surface3 }]} />;
+  return <View style={[styles.skeleton, { height, backgroundColor: colors.surface3 }, style]} />;
 }
 
 const styles = StyleSheet.create({
-  metric: { gap: 2 },
-  metricValue: { fontSize: 18, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  metricLabel: { fontSize: 11 },
+  pageTop: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 6 },
+  eyebrow: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '600' },
+  pageTitle: { fontSize: 34, lineHeight: 38, fontWeight: '800', letterSpacing: -1, marginTop: 2 },
   empty: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 20,
     paddingHorizontal: 24,
-    paddingVertical: 48,
+    paddingVertical: 40,
     alignItems: 'center',
     gap: 8,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '600' },
+  emptyTitle: { fontSize: 17, fontWeight: '700' },
   emptyMessage: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  panel: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
-  card: { borderWidth: 1, borderRadius: 14, padding: 16 },
-  sectionTitle: { fontSize: 14, fontWeight: '600' },
-  skeleton: { borderRadius: 10, marginVertical: 6, marginHorizontal: 8 },
+  panel: { borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
+  card: { borderWidth: 1, borderRadius: 22, padding: 16 },
+  cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 },
+  cardTitle: { fontSize: 15, fontWeight: '700' },
+  cardCaption: { fontSize: 12, flexShrink: 1 },
+  sectionTitle: { fontSize: 15, fontWeight: '700' },
+  skeleton: { borderRadius: 12, marginVertical: 6 },
 });

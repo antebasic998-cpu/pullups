@@ -23,16 +23,21 @@ function Icon({ size = 18, children, ...rest }: IconProps) {
 
 export const TrophyIcon = (p: IconProps) => (
   <Icon {...p}>
-    <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z" />
-    <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" />
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
   </Icon>
 );
 
 export const UsersIcon = (p: IconProps) => (
   <Icon {...p}>
-    <path d="M16 19v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19" />
-    <circle cx="9" cy="7" r="3.2" />
-    <path d="M22 19v-1.4a4 4 0 0 0-3-3.8M16.5 4.3a3.2 3.2 0 0 1 0 6.2" />
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </Icon>
 );
 
@@ -140,7 +145,7 @@ export const InfoIcon = (p: IconProps) => (
 
 export const CheckIcon = (p: IconProps) => (
   <Icon {...p}>
-    <path d="M4 12.5 9 17.5 20 6.5" />
+    <path d="M20 6 9 17l-5-5" />
   </Icon>
 );
 
@@ -153,7 +158,7 @@ export const SearchIcon = (p: IconProps) => (
 
 export const FlameIcon = (p: IconProps) => (
   <Icon {...p}>
-    <path d="M12 22c4 0 6.5-2.7 6.5-6 0-4.5-4.5-6-5.5-11-2 2.5-3 4-3 6.5 0 1.5-2 1.5-2 0 0-1.2.3-2 .8-3C6.3 10 5.5 12.2 5.5 16c0 3.3 2.5 6 6.5 6Z" />
+    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
   </Icon>
 );
 
@@ -167,5 +172,61 @@ export const MedalIcon = (p: IconProps) => (
 export const RefreshIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5" />
+  </Icon>
+);
+
+export const AwardIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="8" r="6" />
+    <path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11" />
+  </Icon>
+);
+
+export const SlidersIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+  </Icon>
+);
+
+/** Pass fill="currentColor" for the solid crown on the podium. */
+export const CrownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
+  </Icon>
+);
+
+export const ChevronDownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
+
+export const ChevronLeftIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m15 18-6-6 6-6" />
+  </Icon>
+);
+
+export const MinusIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 12h14" />
+  </Icon>
+);
+
+export const MoreIcon = (p: IconProps) => (
+  <Icon {...p} strokeWidth={0} fill="currentColor">
+    <circle cx="5" cy="12" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="19" cy="12" r="1.6" />
+  </Icon>
+);
+
+/** Pull-up bar – the exercise glyph used by the exercise pill. */
+export const BarIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 4h18" />
+    <path d="M8 4v6M16 4v6" />
+    <circle cx="12" cy="12.5" r="2.5" />
+    <path d="M8.5 21v-3.2a3.5 3.5 0 0 1 7 0V21" />
   </Icon>
 );

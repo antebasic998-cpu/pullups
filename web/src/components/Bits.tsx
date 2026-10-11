@@ -9,12 +9,33 @@ export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
         width: size,
         height: size,
         background: avatarColor(name),
-        fontSize: size * 0.4,
+        fontSize: size * 0.38,
       }}
       aria-hidden="true"
     >
       {initials(name)}
     </span>
+  );
+}
+
+/** Eyebrow + big title on the left, an optional control (the exercise pill) on the right. */
+export function PageHeader({
+  eyebrow,
+  title,
+  right,
+}: {
+  eyebrow: ReactNode;
+  title: string;
+  right?: ReactNode;
+}) {
+  return (
+    <header className="page-top">
+      <div className="min-w-0">
+        <div className="eyebrow">{eyebrow}</div>
+        <h1 className="page-title">{title}</h1>
+      </div>
+      {right}
+    </header>
   );
 }
 
@@ -57,9 +78,9 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
-      <h2 className="m-0 text-base font-semibold">{title}</h2>
-      <p className="m-0 max-w-sm text-sm leading-relaxed muted">{message}</p>
+    <div className="empty">
+      <h2>{title}</h2>
+      <p>{message}</p>
       {action}
     </div>
   );

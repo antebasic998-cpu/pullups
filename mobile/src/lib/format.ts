@@ -45,6 +45,16 @@ export function formatDateShort(iso: string): string {
   return parseISO(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
+/** "5 – 11 Oct" / "28 Sep – 4 Oct" */
+export function formatWeekRange(startISO: string, endISO: string): string {
+  const a = parseISO(startISO);
+  const b = parseISO(endISO);
+  const month = (d: Date) => d.toLocaleDateString(undefined, { month: 'short' });
+  return a.getMonth() === b.getMonth()
+    ? `${a.getDate()} – ${b.getDate()} ${month(b)}`
+    : `${a.getDate()} ${month(a)} – ${b.getDate()} ${month(b)}`;
+}
+
 export function daysAgo(iso: string | null | undefined): string {
   if (!iso) return 'no attempts yet';
   const today = new Date();

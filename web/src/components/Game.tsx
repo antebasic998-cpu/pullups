@@ -1,4 +1,7 @@
+import type { CSSProperties } from 'react';
 import type { Badge, Level, Streaks } from '../types';
+import { formatDateShort } from '../lib/format';
+import { Avatar } from './Bits';
 import { FlameIcon } from './Icons';
 
 const TIER_COLOR: Record<string, string> = {
@@ -8,114 +11,104 @@ const TIER_COLOR: Record<string, string> = {
   legend: 'var(--accent)',
 };
 
-/** Level + XP progress. Deliberately says "XP never changes your score". */
-export function LevelCard({ level, streaks }: { level: Level; streaks: Streaks }) {
+const RING_R = 46;
+const RING_C = 2 * Math.PI * RING_R;
+
+/** Avatar with a level-progress ring around it and a "LVL n" pill underneath. */
+export function LevelRing({ name, level }: { name: string; level: Level | null }) {
+  const pct = level ? Math.min(100, Math.max(0, level.progress)) : 0;
   return (
-    <div className="card px-4 py-3.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-baseline gap-2">
-          <span className="text-xs faint">Level {level.level}</span>
-          <span className="text-sm font-semibold">{level.title}</span>
-        </div>
-        <span className="num text-xs muted">
+    <div className="lvl-ring">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle className="trk" cx="50" cy="50" r={RING_R} />
+        <circle
+          className="prg"
+          cx="50"
+          cy="50"
+          r={RING_R}
+          strokeDasharray={`${((RING_C * pct) / 100).toFixed(1)} 999`}
+          transform="rotate(-90 50 50)"
+        />
+      </svg>
+      <Avatar name={name} size={74} />
+      {level ? <i className="lvl">LVL {level.level}</i> : null}
+    </div>
+  );
+}
+
+/** "4-week streak", "Back today", … or null when there is nothing to show. */
+export function streakLabel(streaks: Streaks): string | null {
+  if (streaks.weeks === 0 && streaks.days === 0) return null;
+  if (streaks.weeks > 1) {
+    return `${streaks.weeks}-week streak${streaks.bestWeeks > streaks.weeks ? ` (best ${streaks.bestWeeks})` : ''}`;
+  }
+  return streaks.days === 1 ? 'Back today' : `${streaks.days} days in a row`;
+}
+
+/** Level title, XP bar and streak. Deliberately says nothing about the score – XP never changes it. */
+export function XpProgress({ level, streaks }: { level: Level; streaks: Streaks }) {
+  const streak = streakLabel(streaks);
+  return (
+    <div className="xp">
+      <div className="xp-line">
+        <b>{level.title}</b>
+        <span className="num">
           {level.isMax ? `${level.xp} XP · maxed out` : `${level.xp} / ${level.xp + level.xpToNext} XP`}
         </span>
       </div>
-
       <div
-        className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full"
-        style={{ background: 'var(--surface-3)' }}
+        className="track"
         role="progressbar"
         aria-valuenow={Math.round(level.progress)}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`Level ${level.level} progress`}
       >
-        <div
-          className="h-full rounded-full transition-[width] duration-500"
-          style={{ width: `${level.progress}%`, background: 'var(--accent)' }}
-        />
+        <i style={{ width: `${level.progress}%` }} />
       </div>
-
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs faint">
+      <div className="xp-line">
         <span>
-          {level.isMax
-            ? 'Office Legend — nothing left to prove.'
-            : `${level.xpToNext} XP to ${level.nextTitle}`}
+          {level.isMax ? 'Office Legend — nothing left to prove.' : `${level.xpToNext} XP to ${level.nextTitle}`}
         </span>
-        <StreakLine streaks={streaks} />
+        {streak ? (
+          <span className="streak">
+            <FlameIcon size={13} strokeWidth={2.2} />
+            {streak}
+          </span>
+        ) : (
+          <span>No streak yet</span>
+        )}
       </div>
     </div>
   );
 }
 
-export function StreakLine({ streaks }: { streaks: Streaks }) {
-  if (streaks.weeks === 0 && streaks.days === 0) {
-    return <span>No streak yet — log a result to start one</span>;
-  }
-  if (streaks.weeks > 1) {
-    return (
-      <span className="inline-flex items-center gap-1">
-        <FlameIcon size={12} style={{ color: 'var(--down)' }} />
-        {streaks.weeks}-week streak
-        {streaks.bestWeeks > streaks.weeks ? ` (best ${streaks.bestWeeks})` : ''}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1">
-      <FlameIcon size={12} style={{ color: 'var(--down)' }} />
-      {streaks.days === 1 ? 'Back today' : `${streaks.days} days in a row`}
-    </span>
-  );
-}
+const shortDate = (value: string | null): string | null =>
+  value ? (/^\d{4}-\d{2}-\d{2}/.test(value) ? formatDateShort(value.slice(0, 10)) : value) : null;
 
-export function BadgeTile({ badge, compact = false }: { badge: Badge; compact?: boolean }) {
-  const color = TIER_COLOR[badge.tier] ?? 'var(--muted)';
+/** A round, tier-ringed badge for the horizontal swipe row. Locked ones are dashed and grey. */
+export function BadgeMedal({ badge }: { badge: Badge }) {
   const title = badge.unlocked
-    ? `${badge.name} — unlocked${badge.unlockedAt ? ` on ${badge.unlockedAt}` : ''}`
+    ? `${badge.name} — unlocked${badge.unlockedAt ? ` on ${shortDate(badge.unlockedAt)}` : ''}`
     : `${badge.name} — ${badge.how}${badge.progress ? ` (${badge.progress.raw}/${badge.progress.target})` : ''}`;
 
   return (
     <div
+      className={`bd ${badge.unlocked ? '' : 'lock'}`}
+      style={{ '--t': TIER_COLOR[badge.tier] ?? 'var(--muted)' } as CSSProperties}
       title={title}
-      className="flex items-center gap-2.5 rounded-xl border px-2.5 py-2"
-      style={{
-        borderColor: badge.unlocked ? 'var(--border)' : 'var(--border)',
-        borderStyle: badge.unlocked ? 'solid' : 'dashed',
-        background: badge.unlocked ? 'var(--surface-2)' : 'transparent',
-        opacity: badge.unlocked ? 1 : 0.55,
-      }}
     >
-      <span
-        className="flex size-7 flex-none items-center justify-center rounded-lg text-sm"
-        style={{
-          background: badge.unlocked ? 'var(--surface)' : 'transparent',
-          border: badge.unlocked ? `1px solid ${color}` : '1px solid var(--border)',
-          filter: badge.unlocked ? 'none' : 'grayscale(1)',
-        }}
-        aria-hidden="true"
-      >
-        {badge.emoji}
-      </span>
-
-      {!compact ? (
-        <span className="min-w-0">
-          <span
-            className="block truncate text-xs font-medium"
-            style={{ color: badge.unlocked ? 'var(--text)' : 'var(--muted)' }}
-          >
-            {badge.name}
-          </span>
-          <span className="block truncate text-[0.7rem] faint">
-            {badge.unlocked
-              ? badge.unlockedAt
-              : badge.progress
-                ? `${badge.progress.raw} / ${badge.progress.target}`
-                : 'locked'}
-          </span>
-        </span>
-      ) : null}
+      <div className="c">
+        <span aria-hidden="true">{badge.emoji}</span>
+      </div>
+      <b>{badge.name}</b>
+      <small>
+        {badge.unlocked
+          ? (shortDate(badge.unlockedAt) ?? 'unlocked')
+          : badge.progress
+            ? `${badge.progress.raw} / ${badge.progress.target}`
+            : 'locked'}
+      </small>
     </div>
   );
 }

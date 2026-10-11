@@ -1,51 +1,56 @@
 @import 'tailwindcss';
 
 /* ------------------------------------------------------------------ *
- * Design tokens – flat, calm, low-chrome. Colour is used sparingly:
- * text hierarchy carries the design, the lime accent marks actions and
- * personal bests only.
+ * Design tokens – "Arena": dark, sporty, podium-first. Lime marks actions,
+ * personal bests and progress; gold / silver / bronze are reserved for ranks.
  * ------------------------------------------------------------------ */
 :root,
 [data-theme='dark'] {
   --bg: #0a0b0d;
-  --surface: #101216;
-  --surface-2: #16181d;
-  --surface-3: #1d2027;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --text: #e9ecef;
-  --muted: #8a919b;
-  --faint: #5c636e;
+  --surface: #111318;
+  --surface-2: #171a20;
+  --surface-3: #20242c;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --text: #eef0f3;
+  --muted: #8b929d;
+  --faint: #59606b;
   --accent: #c9f750;
   --accent-ink: #0f1305;
-  --accent-soft: rgba(201, 247, 80, 0.1);
-  --accent-line: rgba(201, 247, 80, 0.35);
-  --gold: #e2c069;
-  --silver: #b6bdc7;
-  --bronze: #c79264;
+  --accent-soft: rgba(201, 247, 80, 0.09);
+  --accent-line: rgba(201, 247, 80, 0.3);
+  --gold: #e9c46a;
+  --gold-soft: rgba(233, 196, 106, 0.12);
+  --silver: #c5ccd6;
+  --bronze: #d39b6a;
   --danger: #f0736a;
   --danger-soft: rgba(240, 115, 106, 0.1);
   --up: #6ee7a8;
   --down: #f0908a;
   --grid-line: rgba(255, 255, 255, 0.06);
-  --overlay: rgba(0, 0, 0, 0.6);
+  --overlay: rgba(0, 0, 0, 0.62);
+  --nav-bg: rgba(13, 14, 17, 0.92);
+  --sheet-bg: #14161b;
+  --fab-ring: #0a0b0d;
+  --accent-glow: rgba(201, 247, 80, 0.32);
 }
 
 [data-theme='light'] {
-  --bg: #fafbfc;
+  --bg: #f4f5f7;
   --surface: #ffffff;
-  --surface-2: #f4f5f7;
-  --surface-3: #eceef1;
-  --border: rgba(17, 24, 39, 0.08);
-  --border-strong: rgba(17, 24, 39, 0.16);
+  --surface-2: #f0f2f5;
+  --surface-3: #e5e8ed;
+  --border: rgba(17, 24, 39, 0.09);
+  --border-strong: rgba(17, 24, 39, 0.17);
   --text: #14161a;
   --muted: #5c6472;
-  --faint: #737b88;
+  --faint: #8a919d;
   --accent: #5c8a00;
   --accent-ink: #ffffff;
   --accent-soft: rgba(92, 138, 0, 0.09);
   --accent-line: rgba(92, 138, 0, 0.32);
   --gold: #a67c14;
+  --gold-soft: rgba(166, 124, 20, 0.12);
   --silver: #78818f;
   --bronze: #9c6432;
   --danger: #cf4436;
@@ -53,7 +58,11 @@
   --up: #12855a;
   --down: #c2410c;
   --grid-line: rgba(17, 24, 39, 0.07);
-  --overlay: rgba(15, 23, 42, 0.35);
+  --overlay: rgba(15, 23, 42, 0.38);
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --sheet-bg: #ffffff;
+  --fab-ring: #f4f5f7;
+  --accent-glow: rgba(92, 138, 0, 0.28);
 }
 
 @theme {

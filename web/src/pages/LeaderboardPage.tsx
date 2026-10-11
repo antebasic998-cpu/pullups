@@ -3,13 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAsync } from '../lib/hooks';
 import { useDataVersion } from '../lib/store';
-import { formatKg, pluralize, reps } from '../lib/format';
-import { Avatar, EmptyState } from '../components/Bits';
-import { PlusIcon, TrendDownIcon, TrendUpIcon } from '../components/Icons';
+import { formatKg, formatWeekRange, pluralize, reps } from '../lib/format';
+import { useLogSheet } from '../lib/LogSheet';
+import { Avatar, EmptyState, PageHeader } from '../components/Bits';
+import { CheckIcon, CrownIcon, PlusIcon, TrendDownIcon, TrendUpIcon } from '../components/Icons';
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { UserFormModal } from '../components/UserFormModal';
-import { AttemptFormModal } from '../components/AttemptFormModal';
-import type { BoardMode, ExerciseCategory, LeaderRow } from '../types';
+import type { BoardMode, ExerciseCategory, LeaderRow, OfficeResponse } from '../types';
 
 const BOARDS: { id: BoardMode; label: string; blurb: string }[] = [
   { id: 'best', label: 'Best', blurb: 'Bodyweight-normalized score' },
@@ -18,109 +18,133 @@ const BOARDS: { id: BoardMode; label: string; blurb: string }[] = [
   { id: 'active', label: 'Most active', blurb: 'Sessions logged' },
 ];
 
+const RANK_COLOR: Record<number, string> = { 1: 'var(--gold)', 2: 'var(--silver)', 3: 'var(--bronze)' };
+
 export function LeaderboardPage() {
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const [mode, setMode] = useState<BoardMode>('best');
   const [addOpen, setAddOpen] = useState(false);
-  const [loggingUser, setLoggingUser] = useState<LeaderRow | null>(null);
   const version = useDataVersion();
+  const log = useLogSheet();
+  const navigate = useNavigate();
   const { data, loading, error } = useAsync(
     () => api.board(mode, selectedCategory?.slug),
     [mode, selectedCategory?.slug, version],
   );
-  const navigate = useNavigate();
+  const { data: office } = useAsync(() => api.office(selectedCategory?.slug), [selectedCategory?.slug, version]);
 
   const board = BOARDS.find((b) => b.id === mode) ?? BOARDS[0];
+  const exerciseName = data?.category?.name ?? selectedCategory?.name ?? 'Pull-ups';
+
+  const rows = data?.rows ?? [];
+  const ranked = rows.filter((r) => r.rank !== null);
+  const top = ranked.slice(0, 3);
+  const rest = rows.filter((r) => !top.includes(r));
+  const hasRanked = ranked.length > 0;
+
+  const quickLog = (row: LeaderRow) => log.open({ userId: row.id, category: selectedCategory });
+  const profileLink = (row: LeaderRow) =>
+    `/users/${row.id}${selectedCategory ? `?category=${selectedCategory.slug}` : ''}`;
 
   return (
     <div className="shell">
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="m-0 text-xl font-semibold tracking-tight">Leaderboard</h1>
-            <ExerciseSelector
-              selected={selectedCategory}
-              onSelect={setSelectedCategory}
-              loading={loading}
-              compact
-            />
-          </div>
-          <p className="m-0 mt-1 text-sm muted">
-            {board.blurb}
-            {loading ? (
-              <span className="faint"> · updating...</span>
-            ) : data && data.userCount > 0 ? (
-              ` · office median ${formatKg(data.medianMassKg)} · ${pluralize(data.userCount, 'athlete')}`
-            ) : data ? (
-              ' · nobody on the board yet'
-            ) : (
-              ''
-            )}
-          </p>
-        </div>
+      <PageHeader
+        eyebrow={`${exerciseName} leaderboard`}
+        title="Board"
+        right={
+          <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} loading={loading} compact />
+        }
+      />
 
-        <div className="seg" role="tablist" aria-label="Board">
-          {BOARDS.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              role="tab"
-              aria-selected={mode === b.id}
-              data-active={mode === b.id}
-              className="seg-item"
-              onClick={() => setMode(b.id)}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
-      </header>
+      <div className="chips hs" role="tablist" aria-label="Board">
+        {BOARDS.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            role="tab"
+            aria-selected={mode === b.id}
+            data-active={mode === b.id}
+            className="chip"
+            onClick={() => setMode(b.id)}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+
+      <p className="blurb">
+        {board.blurb}
+        {loading ? (
+          <span> · updating...</span>
+        ) : data && data.userCount > 0 ? (
+          ` · median ${formatKg(data.medianMassKg)} · ${pluralize(data.userCount, 'athlete')}`
+        ) : data ? (
+          ' · nobody on the board yet'
+        ) : (
+          ''
+        )}
+      </p>
 
       {error ? <p className="error-text">{error}</p> : null}
 
-      {loading ? (
-        <SkeletonList categoryName={selectedCategory?.name} />
-      ) : data && data.rows.length === 0 ? (
+      {loading && !data ? (
+        <BoardSkeleton />
+      ) : data && rows.length === 0 ? (
         <EmptyState
-          title={`No ${selectedCategory?.name ?? 'results'} yet`}
-          message={`Nobody has logged ${selectedCategory?.name?.toLowerCase() ?? 'results'} yet. Be the first!`}
+          title={`No ${exerciseName.toLowerCase()} yet`}
+          message={`Nobody has logged ${exerciseName.toLowerCase()} yet. Add an athlete and be the first!`}
           action={
-            <button type="button" className="btn btn-primary mt-2" onClick={() => setAddOpen(true)}>
+            <button type="button" className="big-btn" style={{ marginTop: 8, width: 'auto', padding: '0 22px' }} onClick={() => setAddOpen(true)}>
               Add athlete
             </button>
           }
         />
       ) : data ? (
-        <div className="panel fade-in">
-          {data.rows.map((row) => (
-            <LeaderboardRow
-              key={row.id}
-              row={row}
-              mode={mode}
-              selectedCategory={selectedCategory}
-              onLog={setLoggingUser}
-            />
-          ))}
+        <div className="fade-in" style={{ opacity: loading ? 0.55 : 1, transition: 'opacity 0.15s ease' }}>
+          {hasRanked ? (
+            <div className={`podium ${top.length === 1 ? 'podium-solo' : ''}`}>
+              {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={mode} to={profileLink(top[1])} /> : null}
+              <PodiumColumn row={top[0]} pos={1} mode={mode} to={profileLink(top[0])} />
+              {top.length >= 3 ? (
+                <PodiumColumn row={top[2]} pos={3} mode={mode} to={profileLink(top[2])} />
+              ) : top.length === 2 ? (
+                <div className="pc pc-ghost" aria-hidden="true" />
+              ) : null}
+            </div>
+          ) : (
+            <div className="notice">
+              <span style={{ fontSize: 22 }} aria-hidden="true">
+                🤸
+              </span>
+              <div>
+                <b>No results logged for {exerciseName} yet</b>
+                <span>Tap + next to an athlete to log the first score.</span>
+              </div>
+            </div>
+          )}
+
+          {rest.length > 0 ? (
+            <div className="lb-list" style={hasRanked ? undefined : { marginTop: 14 }}>
+              {rest.map((row) => (
+                <LeaderboardRow key={row.id} row={row} mode={mode} to={profileLink(row)} onLog={quickLog} />
+              ))}
+            </div>
+          ) : null}
+
+          {office && data.userCount > 0 ? <WeekCard office={office} athletes={rows} /> : null}
         </div>
       ) : null}
 
       {mode === 'improved' && data ? (
-        <p className="mt-3 text-xs faint">
+        <p className="foot">
           Improvement is measured from an athlete's first recorded result to their best score, so one bad day
           doesn't erase progress. It appears once someone has logged two results.
         </p>
       ) : null}
 
+      <p className="foot">score = pull-ups × (bodyweight ÷ office median) ^ 0.67</p>
+
       <UserFormModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={(u) => navigate(`/users/${u.id}`)} />
-      {loggingUser && data ? (
-        <AttemptFormModal
-          open
-          user={loggingUser}
-          medianMassKg={data.medianMassKg}
-          category={selectedCategory}
-          onClose={() => setLoggingUser(null)}
-        />
-      ) : null}
     </div>
   );
 }
@@ -153,15 +177,39 @@ function figures(row: LeaderRow, mode: BoardMode): { value: string; suffix?: str
   }
 }
 
+function PodiumColumn({ row, pos, mode, to }: { row: LeaderRow; pos: 1 | 2 | 3; mode: BoardMode; to: string }) {
+  const f = figures(row, mode);
+  return (
+    <Link to={to} className={`pc p${pos}`} aria-label={`${row.name}, place ${row.rank ?? pos}`}>
+      {pos === 1 ? (
+        <span className="crown">
+          <CrownIcon size={22} strokeWidth={2} fill="currentColor" />
+        </span>
+      ) : null}
+      <div className="avw">
+        <Avatar name={row.name} size={pos === 1 ? 76 : 60} />
+      </div>
+      <div className="pn">{row.name.trim().split(/\s+/)[0]}</div>
+      <div className="ps">
+        {f.value}
+        {f.suffix ? <small>{f.suffix}</small> : null}
+      </div>
+      <div className="ped">
+        <b>{row.rank ?? pos}</b>
+      </div>
+    </Link>
+  );
+}
+
 function LeaderboardRow({
   row,
   mode,
-  selectedCategory,
+  to,
   onLog,
 }: {
   row: LeaderRow;
   mode: BoardMode;
-  selectedCategory: ExerciseCategory | null;
+  to: string;
   onLog: (row: LeaderRow) => void;
 }) {
   const trend =
@@ -175,70 +223,106 @@ function LeaderboardRow({
   const isUnranked = row.rank === null;
 
   return (
-    <div className="row row-cols items-center">
-      <span className={`rank ${isUnranked ? 'rank-unranked' : `rank-${row.rank}`}`}>
+    <div className={`lb-row ${isUnranked ? 'unranked' : ''}`}>
+      <span className="lb-rk" style={!isUnranked && row.rank ? { color: RANK_COLOR[row.rank] } : undefined}>
         {isUnranked ? '—' : row.rank}
       </span>
 
-      <Link
-        to={`/users/${row.id}${selectedCategory ? `?category=${selectedCategory.slug}` : ''}`}
-        className="flex min-w-0 items-center gap-2.5 no-underline"
-        style={{ color: 'inherit' }}
-      >
-        <Avatar name={row.name} />
-        <span className="min-w-0">
-          <span className="flex items-center gap-1.5">
-            <span className="truncate font-medium">{row.name}</span>
+      <Link to={to} className="lb-main">
+        <Avatar name={row.name} size={40} />
+        <div className="lb-who">
+          <b>
+            <span>{row.name}</span>
             {trend}
-          </span>
-          <span className="block truncate text-xs muted">
+          </b>
+          <small>
             {[row.age ? `${row.age}y` : null, formatKg(row.weightKg), `×${row.multiplier.toFixed(2)}`]
               .filter(Boolean)
               .join(' · ')}
-          </span>
-        </span>
+          </small>
+        </div>
+        <div className="lb-val">
+          <b>
+            {isUnranked ? '—' : f.value}
+            {!isUnranked && f.suffix ? <small> {f.suffix}</small> : null}
+          </b>
+          <small>{isUnranked ? 'No attempts yet' : f.detail}</small>
+        </div>
       </Link>
 
-      <span className="num text-right font-semibold">
-        {isUnranked ? '—' : f.value}
-        {!isUnranked && f.suffix ? <span className="faint text-xs font-normal"> {f.suffix}</span> : null}
-      </span>
-
-      <span className="row-extra truncate text-right text-xs muted">
-        {isUnranked ? 'No attempts yet' : f.detail}
-      </span>
-
-      <span className="flex items-center justify-end">
-        <button
-          type="button"
-          className="btn btn-sm btn-quiet"
-          onClick={() => onLog(row)}
-          title={`Log result for ${row.name}`}
-        >
-          <PlusIcon size={13} />
-          <span className="hidden sm:inline">Log</span>
-        </button>
-      </span>
+      <button
+        type="button"
+        className="plus-btn"
+        onClick={() => onLog(row)}
+        title={`Log result for ${row.name}`}
+        aria-label={`Log result for ${row.name}`}
+      >
+        <PlusIcon size={18} strokeWidth={2.4} />
+      </button>
     </div>
   );
 }
 
-function SkeletonList({ categoryName }: { categoryName?: string }) {
+/** Who has logged this week, and who is leading the XP race. */
+function WeekCard({ office, athletes }: { office: OfficeResponse; athletes: LeaderRow[] }) {
+  const logged = new Set(office.xpThisWeek.map((x) => x.userId));
+  const leader = office.xpThisWeek[0];
+  const count = athletes.length;
+
   return (
-    <div className="panel p-3 fade-in">
-      <div className="flex items-center justify-between pb-3 px-1 border-b border-[var(--border)]">
-        <div className="flex items-center gap-2 text-xs font-medium muted">
-          <span
-            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
-            aria-hidden="true"
-          />
-          <span>Loading {categoryName ? `${categoryName} leaderboard...` : 'leaderboard...'}</span>
-        </div>
-        <div className="skeleton h-3 w-16" />
+    <section className="week" aria-label="This week">
+      <div className="week-head">
+        <b>This week</b>
+        <span>{formatWeekRange(office.week.start, office.week.end)}</span>
       </div>
-      <div className="pt-2">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="skeleton my-2" style={{ height: 46 }} />
+      <div className="week-row" style={{ justifyContent: count <= 6 ? 'space-between' : 'flex-start', flexWrap: 'wrap', gap: '12px 14px' }}>
+        {athletes.map((a) => {
+          const done = logged.has(a.id);
+          return (
+            <div key={a.id} className={`wa ${done ? '' : 'off'}`}>
+              <Avatar name={a.name} size={40} />
+              {done ? (
+                <i>
+                  <CheckIcon size={10} strokeWidth={3.5} />
+                </i>
+              ) : null}
+              <span>{a.name.trim().split(/\s+/)[0]}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p>
+        {logged.size} of {count} logged
+        {leader ? (
+          <>
+            {' '}
+            · {leader.name.trim().split(/\s+/)[0]} leads with <b>{leader.xp} XP</b>
+          </>
+        ) : (
+          ' · be the first to log this week'
+        )}
+      </p>
+    </section>
+  );
+}
+
+function BoardSkeleton() {
+  return (
+    <div className="fade-in" aria-busy="true">
+      <div className="podium">
+        {[78, 104, 58].map((h, i) => (
+          <div key={i} className="pc" style={{ alignSelf: 'end' }}>
+            <div className="skeleton" style={{ width: i === 1 ? 76 : 60, height: i === 1 ? 76 : 60, borderRadius: 999 }} />
+            <div className="skeleton" style={{ width: '60%', height: 14, marginTop: 12 }} />
+            <div className="skeleton" style={{ width: '100%', height: h, marginTop: 14, borderRadius: '14px 14px 4px 4px' }} />
+          </div>
+        ))}
+      </div>
+      <div className="lb-list">
+        {Array.from({ length: 2 }, (_, i) => (
+          <div key={i} className="lb-row">
+            <div className="skeleton" style={{ width: '100%', height: 40 }} />
+          </div>
         ))}
       </div>
     </div>

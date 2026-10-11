@@ -3,13 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAsync } from '../lib/hooks';
 import { useDataVersion } from '../lib/store';
+import { useLogSheet } from '../lib/LogSheet';
 import { daysAgo, formatKg, pluralize, reps } from '../lib/format';
-import { Avatar, EmptyState } from '../components/Bits';
-import { AttemptFormModal } from '../components/AttemptFormModal';
+import { Avatar, EmptyState, PageHeader } from '../components/Bits';
 import { UserFormModal } from '../components/UserFormModal';
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { PlusIcon, SearchIcon } from '../components/Icons';
-import type { ExerciseCategory, UserSummary } from '../types';
+import type { ExerciseCategory } from '../types';
 
 /**
  * The roster: who is on the board and their normalized PB, with one action per
@@ -21,13 +21,13 @@ export function UsersPage() {
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const version = useDataVersion();
   const navigate = useNavigate();
+  const log = useLogSheet();
   const { data, loading, error } = useAsync(() => api.users(selectedCategory?.slug), [selectedCategory?.slug, version]);
 
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
-  const [logging, setLogging] = useState<UserSummary | null>(null);
 
-  // The header's "Add athlete" button deep-links to /users?new=1
+  // "Add athlete" deep-links to /users?new=1 (also used by the empty Log sheet).
   useEffect(() => {
     if (params.get('new') === '1') {
       setAddOpen(true);
@@ -44,64 +44,57 @@ export function UsersPage() {
 
   return (
     <div className="shell">
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="m-0 text-xl font-semibold tracking-tight">Athletes</h1>
-            <ExerciseSelector
-              selected={selectedCategory}
-              onSelect={setSelectedCategory}
-              loading={loading}
-              compact
-            />
-          </div>
-          <p className="m-0 mt-1 text-sm muted">
-            {loading ? (
-              <span className="faint">Updating athlete roster...</span>
-            ) : data && data.userCount > 0 ? (
-              `${pluralize(data.userCount, 'athlete')} · median ${formatKg(data.medianMassKg)}`
-            ) : data ? (
-              'Nobody on the board yet'
-            ) : (
-              'Personal bests'
-            )}
-          </p>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={() => setAddOpen(true)}>
-          <PlusIcon size={15} />
-          Add athlete
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="Personal bests"
+        title="Athletes"
+        right={
+          <ExerciseSelector selected={selectedCategory} onSelect={setSelectedCategory} loading={loading} compact />
+        }
+      />
+      <p className="blurb">
+        {loading && !data ? (
+          'Updating athlete roster...'
+        ) : data && data.userCount > 0 ? (
+          `${pluralize(data.userCount, 'athlete')} · median ${formatKg(data.medianMassKg)}`
+        ) : data ? (
+          'Nobody on the board yet'
+        ) : (
+          ''
+        )}
+      </p>
 
-      <div className="relative mb-4 max-w-xs">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 faint">
-          <SearchIcon size={14} />
-        </span>
-        <input
-          className="input pl-8"
-          placeholder="Search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search athletes"
-        />
+      <div className="acts" style={{ marginTop: 14 }}>
+        <div className="search" style={{ marginTop: 0, flex: 1 }}>
+          <SearchIcon size={17} strokeWidth={2} />
+          <input
+            className="input"
+            placeholder="Search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search athletes"
+          />
+        </div>
+        <button
+          type="button"
+          className="sq-btn"
+          style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 0, height: 46, width: 46 }}
+          onClick={() => setAddOpen(true)}
+          title="Add athlete"
+          aria-label="Add athlete"
+        >
+          <PlusIcon size={22} strokeWidth={2.6} />
+        </button>
       </div>
 
       {error ? <p className="error-text">{error}</p> : null}
 
-      {loading ? (
-        <div className="panel p-3 fade-in">
-          <div className="flex items-center gap-2 pb-3 px-1 border-b border-[var(--border)] text-xs font-medium muted">
-            <span
-              className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
-              aria-hidden="true"
-            />
-            <span>Loading {selectedCategory?.name ?? 'exercise'} personal bests...</span>
-          </div>
-          <div className="pt-2">
-            {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="skeleton my-2" style={{ height: 46 }} />
-            ))}
-          </div>
+      {loading && !data ? (
+        <div className="lb-list fade-in" style={{ marginTop: 14 }} aria-busy="true">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="lb-row">
+              <div className="skeleton" style={{ width: '100%', height: 40 }} />
+            </div>
+          ))}
         </div>
       ) : users.length === 0 ? (
         <EmptyState
@@ -124,18 +117,16 @@ export function UsersPage() {
           }
         />
       ) : (
-        <div className="panel fade-in">
+        <div className="lb-list fade-in" style={{ marginTop: 14, opacity: loading ? 0.55 : 1 }}>
           {users.map((user) => (
-            <div key={user.id} className="row roster-cols">
-              <Link
-                to={`/users/${user.id}`}
-                className="flex min-w-0 items-center gap-2.5 no-underline"
-                style={{ color: 'inherit' }}
-              >
-                <Avatar name={user.name} />
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{user.name}</span>
-                  <span className="block truncate text-xs muted">
+            <div key={user.id} className="lb-row">
+              <Link to={`/users/${user.id}`} className="lb-main">
+                <Avatar name={user.name} size={40} />
+                <div className="lb-who">
+                  <b>
+                    <span>{user.name}</span>
+                  </b>
+                  <small>
                     {[
                       user.age ? `${user.age}y` : null,
                       formatKg(user.weightKg),
@@ -145,50 +136,37 @@ export function UsersPage() {
                     ]
                       .filter(Boolean)
                       .join(' · ')}
-                  </span>
-                </span>
+                  </small>
+                </div>
+                <div className="lb-val">
+                  <b>
+                    {user.sessionCount > 0 ? user.pbNormalized.toFixed(2) : <span className="faint">–</span>}
+                    {user.sessionCount > 0 ? <small> pts</small> : null}
+                  </b>
+                  <small>{user.sessionCount > 0 ? reps(user.pbAbsolute) : ''}</small>
+                </div>
               </Link>
-
-              <span className="num text-right font-semibold">
-                {user.sessionCount > 0 ? user.pbNormalized.toFixed(2) : <span className="faint">–</span>}
-              </span>
-
-              <span className="flex items-center justify-end gap-2">
-                <span className="roster-detail num text-xs muted">
-                  {user.sessionCount > 0 ? reps(user.pbAbsolute) : ''}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-quiet"
-                  onClick={() => setLogging(user)}
-                  title={`Log a result for ${user.name}`}
-                >
-                  Log
-                </button>
-              </span>
+              <button
+                type="button"
+                className="plus-btn"
+                onClick={() => log.open({ userId: user.id, category: selectedCategory })}
+                title={`Log a result for ${user.name}`}
+                aria-label={`Log a result for ${user.name}`}
+              >
+                <PlusIcon size={18} strokeWidth={2.4} />
+              </button>
             </div>
           ))}
         </div>
       )}
 
-      <p className="mt-3 text-xs faint">
-        Open an athlete for their history, chart, and to edit, import or remove them.
-      </p>
+      <p className="foot">Open an athlete for their history, chart, and to edit, import or remove them.</p>
 
       <UserFormModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onSaved={(user) => navigate(`/users/${user.id}`)}
       />
-      {logging && data ? (
-        <AttemptFormModal
-          open
-          user={logging}
-          medianMassKg={data.medianMassKg}
-          category={selectedCategory}
-          onClose={() => setLogging(null)}
-        />
-      ) : null}
     </div>
   );
 }

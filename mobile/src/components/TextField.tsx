@@ -54,12 +54,12 @@ export function TextField({
 
 const styles = StyleSheet.create({
   field: { gap: 6 },
-  label: { fontSize: 12, fontWeight: '500' },
+  label: { fontSize: 12, fontWeight: '600' },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
   },
   multiline: { minHeight: 100, textAlignVertical: 'top' },

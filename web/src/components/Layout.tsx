@@ -1,85 +1,54 @@
 import type { ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { api } from '../api';
-import { useAsync, useTheme } from '../lib/hooks';
-import { useDataVersion } from '../lib/store';
-import { MoonIcon, PlusIcon, SunIcon } from './Icons';
+import { useLogSheet } from '../lib/LogSheet';
+import { AwardIcon, PlusIcon, SlidersIcon, TrophyIcon, UsersIcon } from './Icons';
 
+/**
+ * App shell: page content plus the Arena bottom nav – four destinations around a
+ * big lime "+" that opens the Log sheet from anywhere.
+ */
 export function Layout() {
-  const { theme, toggle } = useTheme();
-  const version = useDataVersion();
-  const { data: meta } = useAsync(() => api.meta(), [version]);
   const { pathname } = useLocation();
+  const log = useLogSheet();
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-        <div className="shell flex min-h-14 flex-wrap items-center gap-x-2.5 gap-y-1 py-1.5 sm:gap-x-4 sm:py-0">
-          {/* The wordmark is the first thing to go on a phone – each page has its own title. */}
-          <NavLink
-            to="/"
-            className="hidden text-sm font-semibold no-underline sm:block"
-            style={{ color: 'var(--text)' }}
-          >
-            Pull-Up & Chin-Up Leaderboard
-          </NavLink>
-
-          <nav className="flex items-center gap-1">
-            <NavTab to="/" active={pathname === '/'}>
-              Board
-            </NavTab>
-            <NavTab to="/awards" active={pathname.startsWith('/awards')}>
-              Awards
-            </NavTab>
-            <NavTab to="/users" active={pathname.startsWith('/users')}>
-              Athletes
-            </NavTab>
-            <NavTab to="/settings" active={pathname.startsWith('/settings')}>
-              Settings
-            </NavTab>
-          </nav>
-
-          <div className="ml-auto flex items-center gap-1.5">
-            {meta && meta.userCount > 0 ? (
-              <span className="mr-1 hidden text-xs faint sm:inline">median {meta.medianMassKg} kg</span>
-            ) : null}
-            <button type="button" className="icon-btn" onClick={toggle} aria-label="Toggle light and dark theme" title="Toggle theme">
-              {theme === 'dark' ? <SunIcon size={15} /> : <MoonIcon size={15} />}
-            </button>
-            <NavLink to="/users?new=1" className="btn btn-primary btn-sm no-underline">
-              <PlusIcon size={14} />
-              <span className="hidden sm:inline">Add athlete</span>
-              <span className="sm:hidden">Add</span>
-            </NavLink>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 py-7">
+      <main className="app-main">
         <Outlet />
       </main>
 
-      <footer className="shell pb-8 pt-2">
-        <p className="m-0 text-xs faint">
-          score = pull-ups × (bodyweight ÷ office median) ^ 0.67 ·{' '}
-          <a href="/api/backup" className="no-underline" style={{ color: 'var(--muted)' }}>
-            download backup
-          </a>{' '}
-          · data in <code>data/db.json</code>
-        </p>
-      </footer>
+      <div className="nav-dock">
+        <nav className="nav-bar" aria-label="Main">
+          <NavTab to="/" active={pathname === '/'} icon={<TrophyIcon size={23} />} label="Board" />
+          <NavTab to="/awards" active={pathname.startsWith('/awards')} icon={<AwardIcon size={23} />} label="Awards" />
+          <div className="nav-fab-slot">
+            <button type="button" className="fab" onClick={() => log.open()} aria-label="Log a result" title="Log a result">
+              <PlusIcon size={28} strokeWidth={2.6} />
+            </button>
+          </div>
+          <NavTab
+            to="/users"
+            active={pathname.startsWith('/users')}
+            icon={<UsersIcon size={23} />}
+            label="Athletes"
+          />
+          <NavTab
+            to="/settings"
+            active={pathname.startsWith('/settings')}
+            icon={<SlidersIcon size={23} />}
+            label="Settings"
+          />
+        </nav>
+      </div>
     </div>
   );
 }
 
-function NavTab({ to, active, children }: { to: string; active: boolean; children: ReactNode }) {
+function NavTab({ to, active, icon, label }: { to: string; active: boolean; icon: ReactNode; label: string }) {
   return (
-    <NavLink
-      to={to}
-      className="nav-tab rounded-lg px-2.5 py-1.5 text-sm no-underline transition-colors"
-      style={{ color: active ? 'var(--text)' : 'var(--muted)', fontWeight: active ? 600 : 500 }}
-    >
-      {children}
+    <NavLink to={to} className="nav-item" data-active={active} aria-current={active ? 'page' : undefined}>
+      <span style={{ display: 'grid', placeItems: 'center', strokeWidth: active ? 2.2 : 1.8 }}>{icon}</span>
+      <span>{label}</span>
     </NavLink>
   );
 }

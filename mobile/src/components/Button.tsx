@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
 import { useTheme } from '../lib/ThemeContext';
 
 type Variant = 'primary' | 'default' | 'quiet' | 'danger';
@@ -10,6 +10,8 @@ export function Button({
   disabled,
   loading,
   small,
+  big,
+  icon,
   style,
 }: {
   label: string;
@@ -18,76 +20,94 @@ export function Button({
   disabled?: boolean;
   loading?: boolean;
   small?: boolean;
+  /** Tall full-width call to action ("Save result"). */
+  big?: boolean;
+  icon?: React.ReactNode;
   style?: ViewStyle;
 }) {
   const { colors } = useTheme();
-  const bg =
-    variant === 'primary'
-      ? colors.accent
-      : variant === 'danger'
-        ? colors.danger
-        : variant === 'quiet'
-          ? colors.surface2
-          : colors.surface2;
-  const fg =
-    variant === 'primary' ? colors.accentInk : variant === 'danger' ? '#fff' : colors.text;
+  const primary = variant === 'primary';
+  const bg = primary ? colors.accent : variant === 'danger' ? colors.danger : colors.surface2;
+  const fg = primary ? colors.accentInk : variant === 'danger' ? '#fff' : colors.text;
+  const fontSize = big ? 17 : small ? 13 : 14.5;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
+      activeOpacity={0.8}
       style={[
         styles.btn,
         small && styles.small,
-        { backgroundColor: bg, borderColor: colors.border, opacity: disabled || loading ? 0.6 : 1 },
+        big && styles.big,
+        {
+          backgroundColor: bg,
+          borderColor: primary || variant === 'danger' ? bg : colors.border,
+          opacity: disabled || loading ? 0.55 : 1,
+        },
         style,
       ]}
     >
       {loading ? (
         <ActivityIndicator size="small" color={fg} />
       ) : (
-        <Text style={[styles.label, { color: fg, fontSize: small ? 13 : 14 }]}>{label}</Text>
+        <View style={styles.content}>
+          {icon}
+          <Text style={[styles.label, { color: fg, fontSize }]}>{label}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );
 }
 
+/** Square icon button (back, more, upload, edit …). */
 export function IconButton({
   label,
   onPress,
-  color,
+  children,
+  size = 40,
+  style,
 }: {
+  /** Accessibility label. */
   label: string;
   onPress: () => void;
-  color?: string;
+  children: React.ReactNode;
+  size?: number;
+  style?: ViewStyle;
 }) {
   const { colors } = useTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
+      accessibilityRole="button"
       accessibilityLabel={label}
-      style={[styles.iconBtn, { borderColor: colors.border }]}
+      activeOpacity={0.7}
+      style={[
+        styles.iconBtn,
+        { width: size, height: size, backgroundColor: colors.surface2, borderColor: colors.border },
+        style,
+      ]}
     >
-      <Text style={{ fontSize: 16, color: color ?? colors.text }}>{label}</Text>
+      {children}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   btn: {
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  small: { paddingHorizontal: 10, paddingVertical: 6 },
-  label: { fontWeight: '600' },
+  small: { paddingHorizontal: 12, height: 36, borderRadius: 12 },
+  big: { height: 56, borderRadius: 18, alignSelf: 'stretch' },
+  content: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  label: { fontWeight: '800' },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

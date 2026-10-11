@@ -1,18 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
-import { exerciseEmoji } from '../lib/categoryUtils';
 import type { ExerciseCategory } from '../types';
+import { BarIcon, CheckIcon, ChevronDownIcon } from './Icons';
 
 interface Props {
   selected: ExerciseCategory | null;
   onSelect: (category: ExerciseCategory) => void;
+  /** Kept for call-site compatibility – both variants are already compact. */
   compact?: boolean;
   loading?: boolean;
   initialSlug?: string | null;
+  /** "pill" = Arena header dropdown, "seg" = inline segmented control (used in the Log sheet). */
+  variant?: 'pill' | 'seg';
+  /** Shown instead of the selector when there is only one exercise to pick from. */
+  fallback?: ReactNode;
 }
 
-export function ExerciseSelector({ selected, onSelect, compact, loading, initialSlug }: Props) {
+export function ExerciseSelector({ selected, onSelect, loading, initialSlug, variant = 'pill', fallback }: Props) {
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -28,50 +35,89 @@ export function ExerciseSelector({ selected, onSelect, compact, loading, initial
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSlug]);
 
-  if (categories.length <= 1) return null;
+  // Close the dropdown on outside click / Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
-  return (
-    <div
-      className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-1 text-sm"
-      role="tablist"
-      aria-label="Exercise category"
-    >
-      {categories.map((cat) => {
-        const isSelected = selected?.id === cat.id || selected?.slug === cat.slug;
-        const icon = exerciseEmoji(cat.iconKey, cat.slug);
-        const showSpinner = isSelected && loading;
-        return (
+  if (categories.length <= 1) return <>{fallback ?? null}</>;
+
+  const isSelected = (cat: ExerciseCategory) => selected?.id === cat.id || selected?.slug === cat.slug;
+
+  if (variant === 'seg') {
+    return (
+      <div className="seg" role="tablist" aria-label="Exercise category">
+        {categories.map((cat) => (
           <button
             key={cat.id}
             type="button"
             role="tab"
-            aria-selected={isSelected}
-            data-active={isSelected}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${
-              compact ? 'text-xs' : 'text-sm'
-            } ${
-              isSelected
-                ? 'bg-[var(--accent)] text-[var(--bg)] shadow-sm'
-                : 'text-[var(--muted)] hover:text-[var(--text)]'
-            }`}
+            aria-selected={isSelected(cat)}
+            data-active={isSelected(cat)}
+            className="seg-item"
             onClick={() => onSelect(cat)}
           >
-            <span className="inline-flex items-center justify-center w-4 h-4">
-              {showSpinner ? (
-                <span
-                  className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
-                  aria-hidden="true"
-                />
-              ) : (
-                <span>{icon}</span>
-              )}
-            </span>
-            <span>{cat.name}</span>
+            {cat.name}
           </button>
-        );
-      })}
+        ))}
+      </div>
+    );
+  }
+
+  const current = categories.find(isSelected) ?? categories[0];
+
+  return (
+    <div className="ex-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="ex-pill"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Exercise: ${current.name}`}
+        onClick={() => setOpen((v) => !v)}
+        style={{ opacity: loading ? 0.7 : 1 }}
+      >
+        <BarIcon size={18} strokeWidth={2} />
+        <span>{current.name}</span>
+        <ChevronDownIcon size={15} strokeWidth={2.4} />
+      </button>
+
+      {open ? (
+        <div className="ex-menu" role="listbox" aria-label="Exercise category">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              role="option"
+              aria-selected={isSelected(cat)}
+              data-active={isSelected(cat)}
+              onClick={() => {
+                onSelect(cat);
+                setOpen(false);
+              }}
+            >
+              <BarIcon size={17} strokeWidth={2} />
+              <span>{cat.name}</span>
+              {isSelected(cat) ? <CheckIcon size={16} strokeWidth={2.6} /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

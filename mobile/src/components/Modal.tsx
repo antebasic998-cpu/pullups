@@ -8,7 +8,71 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../lib/ThemeContext';
+import { Button } from './Button';
+import { XIcon } from './Icons';
+
+/**
+ * Bare bottom sheet: dimmed backdrop, grabber, rounded top. The Log sheet and
+ * every form dialog are built on it.
+ */
+export function SheetModal({
+  visible,
+  onClose,
+  onShow,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onShow?: () => void;
+  children: React.ReactNode;
+}) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <RNModal visible={visible} animationType="slide" transparent onRequestClose={onClose} onShow={onShow}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
+        <TouchableOpacity
+          style={[styles.backdrop, { backgroundColor: colors.overlay }]}
+          activeOpacity={1}
+          onPress={onClose}
+          accessibilityLabel="Close"
+        />
+        <View
+          style={[
+            styles.sheet,
+            { backgroundColor: colors.sheet, borderColor: colors.border, paddingBottom: Math.max(insets.bottom, 14) },
+          ]}
+        >
+          <View style={[styles.grab, { backgroundColor: colors.surface3 }]} />
+          {children}
+        </View>
+      </KeyboardAvoidingView>
+    </RNModal>
+  );
+}
+
+/** Title row with the round close button. */
+export function SheetHeader({ title, subtitle, onClose }: { title: string; subtitle?: string; onClose: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.header}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.subtitle, { color: colors.muted }]}>{subtitle}</Text> : null}
+      </View>
+      <TouchableOpacity
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+        style={[styles.close, { backgroundColor: colors.surface2, borderColor: colors.border }]}
+      >
+        <XIcon size={20} strokeWidth={2.2} color={colors.text} />
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 interface ModalProps {
   visible: boolean;
@@ -23,32 +87,13 @@ interface ModalProps {
 export function AppModal({ visible, title, subtitle, onClose, onShow, children, footer }: ModalProps) {
   const { colors } = useTheme();
   return (
-    <RNModal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-      onShow={onShow}
-    >
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-              {subtitle ? <Text style={[styles.subtitle, { color: colors.muted }]}>{subtitle}</Text> : null}
-            </View>
-            <TouchableOpacity onPress={onClose} style={[styles.close, { borderColor: colors.border }]}>
-              <Text style={{ color: colors.muted, fontSize: 16 }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView keyboardShouldPersistTaps="handled" style={styles.body}>
-            {children}
-          </ScrollView>
-          {footer ? <View style={[styles.footer, { borderTopColor: colors.border }]}>{footer}</View> : null}
-        </View>
-      </KeyboardAvoidingView>
-    </RNModal>
+    <SheetModal visible={visible} onClose={onClose} onShow={onShow}>
+      <SheetHeader title={title} subtitle={subtitle} onClose={onClose} />
+      <ScrollView keyboardShouldPersistTaps="handled" style={styles.body} showsVerticalScrollIndicator={false}>
+        {children}
+      </ScrollView>
+      {footer ? <View style={[styles.footer, { borderTopColor: colors.border }]}>{footer}</View> : null}
+    </SheetModal>
   );
 }
 
@@ -77,45 +122,39 @@ export function ConfirmDialog({
       onClose={onCancel}
       footer={
         <View style={styles.footerRow}>
-          <TouchableOpacity onPress={onCancel} disabled={busy} style={[styles.footerBtn, { borderColor: colors.border }]}>
-            <Text style={{ color: colors.text }}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          <Button label="Cancel" onPress={onCancel} disabled={busy} />
+          <Button
+            label={busy ? 'Working…' : confirmLabel}
+            variant="danger"
             onPress={onConfirm}
             disabled={busy}
-            style={[styles.footerBtn, { backgroundColor: colors.danger, borderColor: colors.danger }]}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>{busy ? 'Working…' : confirmLabel}</Text>
-          </TouchableOpacity>
+          />
         </View>
       }
     >
-      <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>{message}</Text>
+      <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, paddingBottom: 16 }}>{message}</Text>
     </AppModal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)' },
+  backdrop: { ...StyleSheet.absoluteFill },
   sheet: {
-    maxHeight: '88%',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    maxHeight: '92%',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     borderWidth: 1,
     borderBottomWidth: 0,
+    paddingHorizontal: 18,
+    paddingTop: 10,
   },
-  header: { flexDirection: 'row', padding: 16, gap: 12, alignItems: 'flex-start' },
-  title: { fontSize: 17, fontWeight: '600' },
-  subtitle: { fontSize: 12, marginTop: 4 },
-  close: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  body: { paddingHorizontal: 16, maxHeight: 420 },
-  footer: { borderTopWidth: 1, padding: 16 },
+  grab: { width: 40, height: 5, borderRadius: 9, alignSelf: 'center', marginBottom: 14 },
+  header: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 8 },
+  title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { fontSize: 12.5, marginTop: 3 },
+  close: { width: 40, height: 40, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  body: { flexGrow: 0, flexShrink: 1 },
+  footer: { borderTopWidth: 1, paddingTop: 14, marginTop: 6 },
   footerRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  footerBtn: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
 });

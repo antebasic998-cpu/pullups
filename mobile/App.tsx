@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from './src/lib/ThemeContext';
 import { SettingsProvider } from './src/lib/SettingsContext';
 import { ToastProvider } from './src/components/Toast';
 import { CelebrationProvider } from './src/components/Celebration';
+import { LogSheetProvider } from './src/lib/LogSheet';
 import { db, initDb, subscribeToRealtime } from './src/core/db';
 import { buildSeedData } from './src/core/seed';
 import { clearAppUnlocked, isAppUnlocked } from './src/lib/auth';
@@ -80,7 +81,9 @@ export default function App() {
             <ToastProvider>
               <CelebrationProvider>
                 <Boot>
-                  <RootNavigator />
+                  <LogSheetProvider>
+                    <RootNavigator />
+                  </LogSheetProvider>
                 </Boot>
               </CelebrationProvider>
             </ToastProvider>

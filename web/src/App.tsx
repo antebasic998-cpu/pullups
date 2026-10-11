@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { ToastProvider } from './components/Toast';
 import { CelebrationProvider } from './components/Celebration';
 import { SettingsProvider } from './lib/SettingsContext';
+import { LogSheetProvider } from './lib/LogSheet';
 import { AwardsPage } from './pages/AwardsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { UsersPage } from './pages/UsersPage';
@@ -23,16 +24,18 @@ export default function App() {
     <SettingsProvider>
       <ToastProvider>
         <CelebrationProvider>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<LeaderboardPage />} />
-              <Route path="/awards" element={<AwardsPage />} />
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/users/:id" element={<UserDetailPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
+          <LogSheetProvider>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<LeaderboardPage />} />
+                <Route path="/awards" element={<AwardsPage />} />
+                <Route path="/users" element={<UsersPage />} />
+                <Route path="/users/:id" element={<UserDetailPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </LogSheetProvider>
         </CelebrationProvider>
       </ToastProvider>
     </SettingsProvider>
