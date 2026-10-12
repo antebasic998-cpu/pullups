@@ -15,7 +15,8 @@
     "reset": "node server/seed.js --force",
     "clear": "node server/clear.js --force",
     "verify": "node scripts/verify.js",
-    "shoot": "node scripts/shoot.js"
+    "shoot": "node scripts/shoot.js",
+    "brand": "node scripts/brand-assets.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.0",

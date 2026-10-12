@@ -20,9 +20,11 @@ dist/
 .env
 .env*.local
 
-# Binaries and APKs
+# Binaries, PDFs and APKs
 *.apk
+*.pdf
 .vercel/
+exports/
 
 # Mobile native generated build directories
 mobile/ios/

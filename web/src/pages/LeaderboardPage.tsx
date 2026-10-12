@@ -9,6 +9,7 @@ import { Avatar, EmptyState, PageHeader } from '../components/Bits';
 import { CheckIcon, CrownIcon, PlusIcon, TrendDownIcon, TrendUpIcon } from '../components/Icons';
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { UserFormModal } from '../components/UserFormModal';
+import { FlightAvatar, FlightContext, useBoardFlight } from '../components/AvatarFlight';
 import type { BoardMode, ExerciseCategory, LeaderRow, OfficeResponse } from '../types';
 
 const BOARDS: { id: BoardMode; label: string; blurb: string }[] = [
@@ -27,23 +28,33 @@ export function LeaderboardPage() {
   const version = useDataVersion();
   const log = useLogSheet();
   const navigate = useNavigate();
-  // The board is tagged with the mode/exercise it was fetched for. Until the response for the current
-  // selection arrives we show the skeleton instead of the last selection's rows (which would be re-labelled
-  // with the new mode's numbers while still sitting in the old order).
+
+  // Everything on screen comes from one fetch tagged with exercise/mode.
+  // When switching modes or categories, the previous board stays visible (dimmed if slow),
+  // and then smoothly performs the signature Avatar Flight shuffle animation.
   const boardKey = `${mode}|${selectedCategory?.slug ?? ''}`;
   const {
     data: fetched,
     loading,
     error,
-  } = useAsync(async () => ({ key: boardKey, board: await api.board(mode, selectedCategory?.slug) }), [
-    boardKey,
-    version,
-  ]);
-  const switching = fetched?.key !== boardKey;
-  const data = switching ? null : fetched.board;
-  const { data: office } = useAsync(() => api.office(selectedCategory?.slug), [selectedCategory?.slug, version]);
+  } = useAsync(async () => {
+    const board = await api.board(mode, selectedCategory?.slug);
+    const office = await api.office(selectedCategory?.slug);
+    return {
+      key: boardKey,
+      sig: board.rows.map((r) => `${r.id}:${r.rank ?? '-'}:${r.pbNormalized}`).join('|'),
+      mode,
+      board,
+      office,
+    };
+  }, [boardKey, version]);
 
-  const board = BOARDS.find((b) => b.id === mode) ?? BOARDS[0];
+  const { shown, outerRef, contentRef, isDimmed, overlay, flightApi } = useBoardFlight(fetched, boardKey);
+  const data = shown?.board ?? null;
+  const office = shown?.office ?? null;
+  const shownMode = shown?.mode ?? mode;
+
+  const board = BOARDS.find((b) => b.id === shownMode) ?? BOARDS[0];
   const exerciseName = data?.category?.name ?? selectedCategory?.name ?? 'Pull-ups';
 
   const rows = data?.rows ?? [];
@@ -84,7 +95,7 @@ export function LeaderboardPage() {
 
       <p className="blurb">
         {board.blurb}
-        {loading ? (
+        {loading && !shown ? (
           <span> · updating...</span>
         ) : data && data.userCount > 0 ? (
           ` · median ${formatKg(data.medianMassKg)} · ${pluralize(data.userCount, 'athlete')}`
@@ -97,62 +108,146 @@ export function LeaderboardPage() {
 
       {error ? <p className="error-text">{error}</p> : null}
 
-      {switching && !error ? (
+      {!shown && !error ? (
         <BoardSkeleton />
       ) : data && rows.length === 0 ? (
         <EmptyState
           title={`No ${exerciseName.toLowerCase()} yet`}
           message={`Nobody has logged ${exerciseName.toLowerCase()} yet. Add an athlete and be the first!`}
           action={
-            <button type="button" className="big-btn" style={{ marginTop: 8, width: 'auto', padding: '0 22px' }} onClick={() => setAddOpen(true)}>
+            <button
+              type="button"
+              className="big-btn"
+              style={{ marginTop: 8, width: 'auto', padding: '0 22px' }}
+              onClick={() => setAddOpen(true)}
+            >
               Add athlete
             </button>
           }
         />
       ) : data ? (
-        <div className="fade-in" style={{ opacity: loading ? 0.55 : 1, transition: 'opacity 0.15s ease' }}>
-          {hasRanked ? (
-            <div className={`podium ${top.length === 1 ? 'podium-solo' : ''}`}>
-              {top.length >= 2 ? <PodiumColumn row={top[1]} pos={2} mode={mode} to={profileLink(top[1])} onLog={quickLog} /> : null}
-              <PodiumColumn row={top[0]} pos={1} mode={mode} to={profileLink(top[0])} onLog={quickLog} />
-              {top.length >= 3 ? (
-                <PodiumColumn row={top[2]} pos={3} mode={mode} to={profileLink(top[2])} onLog={quickLog} />
-              ) : top.length === 2 ? (
-                <div className="pc pc-ghost" aria-hidden="true" />
-              ) : null}
-            </div>
-          ) : (
-            <div className="notice">
-              <span style={{ fontSize: 22 }} aria-hidden="true">
-                🤸
-              </span>
-              <div>
-                <b>No results logged for {exerciseName} yet</b>
-                <span>Tap + next to an athlete to log the first score.</span>
+        <FlightContext.Provider value={flightApi}>
+          <div ref={outerRef} className="flight-outer-container">
+            <div
+              ref={contentRef}
+              className="flight-content-wrap"
+              style={{
+                opacity: isDimmed ? 0.6 : 1,
+                transition: isDimmed ? 'opacity 0.2s ease' : undefined,
+              }}
+            >
+              <div className="lb-dashboard">
+                <div className="lb-main-col">
+                  {hasRanked ? (
+                    <div className={`podium ${top.length === 1 ? 'podium-solo' : ''}`}>
+                      {top.length >= 2 ? (
+                        <PodiumColumn row={top[1]} pos={2} mode={shownMode} to={profileLink(top[1])} onLog={quickLog} />
+                      ) : null}
+                      <PodiumColumn row={top[0]} pos={1} mode={shownMode} to={profileLink(top[0])} onLog={quickLog} />
+                      {top.length >= 3 ? (
+                        <PodiumColumn row={top[2]} pos={3} mode={shownMode} to={profileLink(top[2])} onLog={quickLog} />
+                      ) : top.length === 2 ? (
+                        <div className="pc pc-ghost" aria-hidden="true" />
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="notice">
+                      <span style={{ fontSize: 22 }} aria-hidden="true">
+                        🤸
+                      </span>
+                      <div>
+                        <b>No results logged for {exerciseName} yet</b>
+                        <span>Tap + next to an athlete to log the first score.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {rest.length > 0 ? (
+                    <div className="lb-list" style={hasRanked ? undefined : { marginTop: 14 }}>
+                      {rest.map((row) => (
+                        <LeaderboardRow
+                          key={row.id}
+                          row={row}
+                          mode={shownMode}
+                          to={profileLink(row)}
+                          onLog={quickLog}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* On mobile screens, WeekCard sits right here in the main stream */}
+                  <div className="lb-mobile-week">
+                    {office && data.userCount > 0 ? <WeekCard office={office} athletes={rows} /> : null}
+                  </div>
+
+                  {shownMode === 'improved' && data ? (
+                    <p className="foot">
+                      Improvement is measured from an athlete's first recorded result to their best score, so one bad day
+                      doesn't erase progress. It appears once someone has logged two results.
+                    </p>
+                  ) : null}
+
+                  <p className="foot">score = pull-ups × (bodyweight ÷ office median) ^ 0.67</p>
+                </div>
+
+                {/* On desktop screens (>= 960px), side rail with WeekCard + Stats & Explainer */}
+                <aside className="lb-side-col">
+                  {office && data.userCount > 0 ? <WeekCard office={office} athletes={rows} /> : null}
+
+                  <div className="desktop-stat-card">
+                    <div className="stat-card-head">
+                      <span className="stat-card-title">Office Overview</span>
+                      <span className="stat-card-badge">{exerciseName}</span>
+                    </div>
+                    <div className="stat-grid-mini">
+                      <div className="stat-mini-item">
+                        <span className="stat-mini-val">{data.userCount}</span>
+                        <span className="stat-mini-lbl">Athletes</span>
+                      </div>
+                      <div className="stat-mini-item">
+                        <span className="stat-mini-val">{formatKg(data.medianMassKg)}</span>
+                        <span className="stat-mini-lbl">Median Mass</span>
+                      </div>
+                      <div className="stat-mini-item">
+                        <span className="stat-mini-val">
+                          {top[0]
+                            ? shownMode === 'absolute'
+                              ? `${top[0].pbAbsolute}`
+                              : top[0].pbNormalized.toFixed(1)
+                            : '–'}
+                        </span>
+                        <span className="stat-mini-lbl">Top Score</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="stat-card-add-btn"
+                      onClick={() => setAddOpen(true)}
+                    >
+                      <PlusIcon size={16} strokeWidth={2.4} />
+                      <span>Add New Athlete</span>
+                    </button>
+                  </div>
+
+                  <div className="desktop-formula-card">
+                    <div className="formula-head">
+                      <span className="formula-icon">⚖️</span>
+                      <b>Bodyweight Normalization</b>
+                    </div>
+                    <p className="formula-body">
+                      Pull-up power scales with <b>body mass ^ 0.67</b>. Heavier athletes lift more mass,
+                      while lighter athletes naturally have a leverage advantage. The Arena formula keeps competition
+                      fun, motivating and 100% fair!
+                    </p>
+                  </div>
+                </aside>
               </div>
             </div>
-          )}
-
-          {rest.length > 0 ? (
-            <div className="lb-list" style={hasRanked ? undefined : { marginTop: 14 }}>
-              {rest.map((row) => (
-                <LeaderboardRow key={row.id} row={row} mode={mode} to={profileLink(row)} onLog={quickLog} />
-              ))}
-            </div>
-          ) : null}
-
-          {office && data.userCount > 0 ? <WeekCard office={office} athletes={rows} /> : null}
-        </div>
+            {overlay}
+          </div>
+        </FlightContext.Provider>
       ) : null}
-
-      {mode === 'improved' && data ? (
-        <p className="foot">
-          Improvement is measured from an athlete's first recorded result to their best score, so one bad day
-          doesn't erase progress. It appears once someone has logged two results.
-        </p>
-      ) : null}
-
-      <p className="foot">score = pull-ups × (bodyweight ÷ office median) ^ 0.67</p>
 
       <UserFormModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={(u) => navigate(`/users/${u.id}`)} />
     </div>
@@ -212,7 +307,7 @@ function PodiumColumn({
       ) : null}
       <div className="avw-wrap">
         <div className="avw">
-          <Avatar name={row.name} userId={row.id} size={pos === 1 ? 76 : 60} />
+          <FlightAvatar name={row.name} userId={row.id} size={pos === 1 ? 76 : 60} />
         </div>
         <button
           type="button"
@@ -264,7 +359,7 @@ function LeaderboardRow({
       </span>
 
       <Link to={to} className="lb-main">
-        <Avatar name={row.name} userId={row.id} size={40} />
+        <FlightAvatar name={row.name} userId={row.id} size={40} />
         <div className="lb-who">
           <b>
             <span>{row.name}</span>
@@ -310,7 +405,10 @@ function WeekCard({ office, athletes }: { office: OfficeResponse; athletes: Lead
         <b>This week</b>
         <span>{formatWeekRange(office.week.start, office.week.end)}</span>
       </div>
-      <div className="week-row" style={{ justifyContent: count <= 6 ? 'space-between' : 'flex-start', flexWrap: 'wrap', gap: '12px 14px' }}>
+      <div
+        className="week-row"
+        style={{ justifyContent: count <= 6 ? 'space-between' : 'flex-start', flexWrap: 'wrap', gap: '12px 14px' }}
+      >
         {athletes.map((a) => {
           const done = logged.has(a.id);
           return (
@@ -349,7 +447,10 @@ function BoardSkeleton() {
           <div key={i} className="pc" style={{ alignSelf: 'end' }}>
             <div className="skeleton" style={{ width: i === 1 ? 76 : 60, height: i === 1 ? 76 : 60, borderRadius: 999 }} />
             <div className="skeleton" style={{ width: '60%', height: 14, marginTop: 12 }} />
-            <div className="skeleton" style={{ width: '100%', height: h, marginTop: 14, borderRadius: '14px 14px 4px 4px' }} />
+            <div
+              className="skeleton"
+              style={{ width: '100%', height: h, marginTop: 14, borderRadius: '14px 14px 4px 4px' }}
+            />
           </div>
         ))}
       </div>

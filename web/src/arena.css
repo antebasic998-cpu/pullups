@@ -14,13 +14,42 @@ body {
 }
 
 .shell {
+  width: 100%;
   max-width: 620px;
+  margin: 0 auto;
   padding: 0 1.125rem;
+}
+
+@media (min-width: 768px) {
+  .shell {
+    max-width: 940px;
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    max-width: 1200px;
+    padding: 0 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .shell {
+    max-width: 1280px;
+    padding: 0 2.25rem;
+  }
 }
 
 .app-main {
   flex: 1;
   padding: 14px 0 132px;
+}
+
+@media (min-width: 768px) {
+  .app-main {
+    padding: 24px 0 60px;
+  }
 }
 
 .hs {
@@ -1765,4 +1794,410 @@ button.who2 {
   width: 100%;
   height: 100%;
   cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ *
+ * Desktop Web Shell & Real Screen Utilization (>= 768px)
+ * ------------------------------------------------------------------ */
+.desktop-header {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-header {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--nav-bg);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .desktop-nav-shell {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    height: 66px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .desktop-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+    flex-shrink: 0;
+  }
+
+  .desktop-brand-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 4px 14px var(--accent-glow);
+  }
+
+  .desktop-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  .desktop-brand-title {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+
+  .desktop-brand-tag {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  .desktop-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    padding: 4px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+  }
+
+  .desktop-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 99px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .desktop-nav-icon {
+    display: grid;
+    place-items: center;
+    opacity: 0.8;
+  }
+
+  .desktop-nav-link:hover {
+    color: var(--text);
+  }
+
+  .desktop-nav-link[data-active='true'] {
+    color: var(--accent-ink);
+    background: var(--accent);
+    box-shadow: 0 2px 8px var(--accent-glow);
+  }
+
+  .desktop-nav-link[data-active='true'] .desktop-nav-icon {
+    opacity: 1;
+  }
+
+  .desktop-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .desktop-theme-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .desktop-theme-btn:hover {
+    color: var(--text);
+    border-color: var(--border-strong);
+    background: var(--surface-3);
+  }
+
+  .desktop-log-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 99px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px var(--accent-glow);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .desktop-log-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px var(--accent-glow);
+  }
+
+  .desktop-log-btn:active {
+    transform: scale(0.98);
+  }
+
+  .nav-dock {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Flight Container & Leaderboard Dashboard Grid
+ * ------------------------------------------------------------------ */
+.flight-outer-container {
+  position: relative;
+  width: 100%;
+}
+
+.flight-content-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.lb-dashboard {
+  display: block;
+}
+
+.lb-main-col {
+  min-width: 0;
+}
+
+.lb-mobile-week {
+  display: block;
+}
+
+.lb-side-col {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .lb-dashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 350px;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .lb-mobile-week {
+    display: none;
+  }
+
+  .lb-side-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: sticky;
+    top: 86px;
+  }
+
+  .lb-side-col .week {
+    margin-top: 0;
+  }
+
+  .podium {
+    gap: 14px;
+    margin: 26px 0 18px;
+  }
+
+  .pc.p1 .ped {
+    height: 120px;
+  }
+
+  .pc.p2 .ped {
+    height: 92px;
+  }
+
+  .pc.p3 .ped {
+    height: 70px;
+  }
+
+  .pn {
+    font-size: 16px;
+  }
+
+  .ps {
+    font-size: 23px;
+  }
+
+  .pc.p1 .ps {
+    font-size: 30px;
+  }
+}
+
+/* Desktop Sidebar Cards */
+.desktop-stat-card {
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.stat-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.stat-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-card-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 99px;
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.stat-grid-mini {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.stat-mini-item {
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 10px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border);
+}
+
+.stat-mini-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-mini-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-card-add-btn {
+  width: 100%;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.stat-card-add-btn:hover {
+  border-color: var(--accent-line);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.desktop-formula-card {
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.formula-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.formula-body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ *
+ * Responsive Grid Enhancements (Awards, Athletes)
+ * ------------------------------------------------------------------ */
+@media (min-width: 640px) {
+  .agrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .agrid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 860px) {
+  .lb-list.roster-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    background: transparent;
+    border: none;
+  }
+
+  .lb-list.roster-grid .lb-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .lb-list.roster-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }

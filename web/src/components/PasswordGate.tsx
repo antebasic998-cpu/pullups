@@ -40,9 +40,7 @@ export function PasswordGate({ onUnlocked }: Props) {
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-[var(--bg)] text-[var(--text)]">
       <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-6 shadow-xl text-center">
-        <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent)]/10 text-3xl">
-          🔒
-        </div>
+        <img src="/logo.svg" alt="" width={64} height={64} className="mb-4 inline-block h-16 w-16" />
         <h1 className="text-xl font-bold tracking-tight">BitReport Leaderboard</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Please enter the office password to access the leaderboard.

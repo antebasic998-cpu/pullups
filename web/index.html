@@ -4,9 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Office pull-up leaderboard with bodyweight-normalized scoring" />
-    <meta name="theme-color" content="#0b0f14" />
+    <meta name="theme-color" content="#0a0b0d" />
     <title>Pull-Up Leaderboard</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%AA%3C/text%3E%3C/svg%3E" />
+    <!-- Icons: web/public, regenerate with `npm run brand`. .ico first = fallback; SVG wins where supported. -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <script>
       // Apply the saved theme before first paint to avoid a flash.
       try {

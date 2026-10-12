@@ -117,7 +117,7 @@ export function UsersPage() {
           }
         />
       ) : (
-        <div className="lb-list fade-in" style={{ marginTop: 14, opacity: loading ? 0.55 : 1 }}>
+        <div className="lb-list roster-grid fade-in" style={{ marginTop: 14, opacity: loading ? 0.55 : 1 }}>
           {users.map((user) => (
             <div key={user.id} className="lb-row">
               <Link to={`/users/${user.id}`} className="lb-main">
